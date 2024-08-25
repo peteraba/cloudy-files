@@ -7,3 +7,7 @@ install:
 lint:
 	go list -f {{.Dir}} ./... | xargs gofumpt -w
 	golangci-lint run ./...
+
+.PHONY: test
+test: lint
+	go test -bench=. ./...

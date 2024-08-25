@@ -297,3 +297,10 @@ issues:
     - text: "logger is heavy"
       linters:
         - gocritic
+    - path: "_test.go"
+      linters:
+        - dupl
+        - gocritic
+        - gocognit
+        - maintidx
+        - gocyclo
