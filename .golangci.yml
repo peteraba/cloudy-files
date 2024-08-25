@@ -1,0 +1,299 @@
+linters:
+  enable-all: true
+  disable:
+    - depguard # it's not for smallish projects, prevents accidentally adding new, unchecked dependencies
+    - execinquery # deprecated
+    - exportloopref # deprecated (replaced by copyloopvar)
+    - ginkgolinter # We don't use ginkgo or gomega here
+    - gofmt # We use gofumpt instead
+    - gomnd # deprecated (replaced by mnd)
+    - grouper # Not required
+    - importas # We use gci already
+    - lll # We don't care about long lines
+    - loggercheck # Does not support phuslu/log
+    - promlinter # We don't use Prometheus here
+    - protogetter # We don't use protobuf here
+    - spancheck # We don't use opentracing here
+
+linters-settings:
+  cyclop:
+    # The maximal code complexity to report.
+    # Default: 10
+    max-complexity: 10
+    # The maximal average package complexity.
+    # If it's higher than 0.0 (float) the check is enabled
+    # Default: 0.0
+    package-average: 0.0
+    # Should ignore tests.
+    # Default: false
+    skip-tests: true
+
+  errcheck:
+    # Report about not checking of errors in type assertions: `a := b.(MyStruct)`.
+    # Such cases aren't reported by default.
+    # Default: false
+    check-type-assertions: true
+    # Report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`.
+    # Such cases aren't reported by default.
+    # Default: false
+    check-blank: false
+    # To disable the errcheck built-in exclude list.
+    # See `-excludeonly` option in https://github.com/kisielk/errcheck#excluding-functions for details.
+    # Default: false
+    disable-default-exclusions: true
+
+  gci:
+    sections:
+      - standard
+      - default
+      - localmodule
+
+  gocognit:
+    # Minimal code complexity to report.
+    # Default: 30 (but we recommend 10-20)
+    # 10 is likely too strict, might be relaxed later
+    min-complexity: 10
+
+  gocritic:
+    # Enable all checks.
+    # Default: false
+    enable-all: true
+
+  gocyclo:
+    # Minimal code complexity to report.
+    # Default: 30 (but we recommend 10-20)
+    # 10 is likely too strict, might be relaxed later
+    min-complexity: 10
+
+  gosec:
+    # Exclude generated files
+    # Default: false
+    exclude-generated: false
+    # Filter out the issues with a lower severity than the given value.
+    # Valid options are: low, medium, high.
+    # Default: low
+    severity: low
+    # Filter out the issues with a lower confidence than the given value.
+    # Valid options are: low, medium, high.
+    # Default: low
+    confidence: low
+
+  gosimple:
+    checks: ["all"]
+
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment
+
+  maintidx:
+    # Show functions with maintainability index lower than N.
+    # A high index indicates better maintainability (it's kind of the opposite of complexity).
+    # Default: 20
+    # 40 is likely too strict, might be relaxed later
+    under: 40
+
+  mnd:
+    ignored-files:
+      - "cli\\.go"
+
+  nakedret:
+    # Make an issue if func has more lines of code than this setting, and it has naked returns.
+    # Default: 30
+    max-func-lines: 5
+
+  nestif:
+    # The maximal nesting level to report.
+    # Default: 5
+    # 3 might be too strict, might be relaxed later
+    min-complexity: 3
+
+  nolintlint:
+    require-explanation: true
+    require-specific: true
+
+  perfsprint:
+    # Optimizes even if it requires an int or uint type cast.
+    # Default: true
+    int-conversion: true
+    # Optimizes into `err.Error()` even if it is only equivalent for non-nil errors.
+    # Default: false
+    err-error: true
+    # Optimizes `fmt.Errorf`.
+    # Default: true
+    errorf: true
+    # Optimizes `fmt.Sprintf` with only one argument.
+    # Default: true
+    sprintf1: true
+    # Optimizes into strings concatenation.
+    # Default: true
+    strconcat: true
+
+  staticcheck:
+    # SAxxxx checks in https://staticcheck.io/docs/configuration/options/#checks
+    # Default: ["*"]
+    checks: [ "all" ]
+
+  tagalign:
+    order:
+      - json
+      - yaml
+      - yml
+      - toml
+      - mapstructure
+      - binding
+      - validate
+
+  tagliatelle:
+    case:
+      rules:
+        json: snake
+
+  testifylint:
+    # Enable all checkers (https://github.com/Antonboom/testifylint#checkers).
+    # Default: false
+    enable-all: true
+
+  unconvert:
+    # Remove conversions that force intermediate rounding.
+    # Default: false
+    fast-math: true
+    # Be more conservative (experimental).
+    # Default: false
+    safe: true
+
+  varnamelen:
+    # The longest distance, in source lines, that is being considered a "small scope".
+    # Variables used in at most this many lines will be ignored.
+    # Default: 5
+    max-distance: 10
+    # The minimum length of a variable's name that is considered "long".
+    # Variable names that are at least this long will be ignored.
+    # Default: 3
+    min-name-length: 3
+    # Check method receivers.
+    # Default: false
+    check-receiver: false
+    # Check named return values.
+    # Default: false
+    check-return: true
+    # Check type parameters.
+    # Default: false
+    check-type-param: true
+    # Ignore "ok" variables that hold the bool return value of a type assertion.
+    # Default: false
+    ignore-type-assert-ok: true
+    # Ignore "ok" variables that hold the bool return value of a map index.
+    # Default: false
+    ignore-map-index-ok: true
+    # Ignore "ok" variables that hold the bool return value of a channel receive.
+    # Default: false
+    ignore-chan-recv-ok: true
+    # Optional list of variable names that should be ignored completely.
+    # Default: []
+    ignore-names:
+      - err
+    # Optional list of variable declarations that should be ignored completely.
+    # Entries must be in one of the following forms (see below for examples):
+    # - for variables, parameters, named return values, method receivers, or type parameters:
+    #   <name> <type>  (<type> can also be a pointer/slice/map/chan/...)
+    # - for constants: const <name>
+    #
+    # Default: []
+    ignore-decls:
+      - t testing.T
+      - f *foo.Bar
+      - e error
+      - i int
+      - const C
+      - T any
+      - m map[string]int
+
+  whitespace:
+    # Enforces newlines (or comments) after every multi-line if statement.
+    # Default: false
+    multi-if: true
+    # Enforces newlines (or comments) after every multi-line function signature.
+    # Default: false
+    multi-func: true
+
+  wsl:
+    # Do strict checking when assigning from append (x = append(x, y)).
+    # If this is set to true - the append call must append either a variable
+    # assigned, called or used on the line above.
+    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#strict-append
+    # Default: true
+    strict-append: true
+    # Allows assignments to be cuddled with variables used in calls on
+    # line above and calls to be cuddled with assignments of variables
+    # used in call on line above.
+    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#allow-assign-and-call
+    # Default: true
+    allow-assign-and-call: true
+    # Allows assignments to be cuddled with anything.
+    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#allow-assign-and-anything
+    # Default: false
+    allow-assign-and-anything: false
+    # Allows cuddling to assignments even if they span over multiple lines.
+    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#allow-multiline-assign
+    # Default: true
+    allow-multiline-assign: true
+    # If the number of lines in a case block is equal to or lager than this number,
+    # the case *must* end white a newline.
+    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#force-case-trailing-whitespace
+    # Default: 0
+    force-case-trailing-whitespace: 0
+    # Allow blocks to end with comments.
+    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#allow-trailing-comment
+    # Default: false
+    allow-trailing-comment: false
+    # Allow multiple comments in the beginning of a block separated with newline.
+    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#allow-separated-leading-comment
+    # Default: false
+    allow-separated-leading-comment: false
+    # Allow multiple var/declaration statements to be cuddled.
+    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#allow-cuddle-declarations
+    # Default: false
+    allow-cuddle-declarations: false
+    # A list of call idents that everything can be cuddled with.
+    # Defaults: [ "Lock", "RLock" ]
+    allow-cuddle-with-calls: [ "Lock", "RLock" ]
+    # AllowCuddleWithRHS is a list of right hand side variables that is allowed
+    # to be cuddled with anything.
+    # Defaults: [ "Unlock", "RUnlock" ]
+    allow-cuddle-with-rhs: [ "Unlock", "RUnlock" ]
+    # Causes an error when an If statement that checks an error variable doesn't
+    # cuddle with the assignment of that variable.
+    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#force-err-cuddling
+    # Default: false
+    force-err-cuddling: false
+    # When force-err-cuddling is enabled this is a list of names
+    # used for error variables to check for in the conditional.
+    # Default: [ "err" ]
+    error-variable-names: [ "err" ]
+    # Causes an error if a short declaration (:=) cuddles with anything other than
+    # another short declaration.
+    # This logic overrides force-err-cuddling among others.
+    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#force-short-decl-cuddling
+    # Default: false
+    force-short-decl-cuddling: false
+
+issues:
+  exclude-rules:
+    - text: ".Unlock`"
+      linters:
+        - errcheck
+    - text: "default"
+      linters:
+        - gochecknoglobals
+    - path: cli/cli.go
+      linters:
+        - forbidigo
+    - path: main.go
+      linters:
+        - cyclop
+        - forbidigo
+        - gocyclo
+    - text: "logger is heavy"
+      linters:
+        - gocritic

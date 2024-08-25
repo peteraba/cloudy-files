@@ -1,0 +1,7 @@
+.idea
+
+data/*
+!data/.gitkeep
+
+files/*
+!files/.gitkeep
