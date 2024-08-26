@@ -2,7 +2,8 @@ package compose
 
 import (
 	"os"
-	"path"
+	"path/filepath"
+	"sync"
 
 	"github.com/phuslu/log"
 
@@ -12,80 +13,151 @@ import (
 	"github.com/peteraba/cloudy-files/store"
 )
 
-func CreateFileService() *service.File {
-	logger := GetLogger()
+type Factory struct {
+	mutex                *sync.Mutex
+	fileSystemInstance   service.FileSystem
+	fileStoreInstance    repo.Store
+	userStoreInstance    repo.Store
+	sessionStoreInstance repo.Store
+}
 
-	fileStore := createFileStore(logger)
-	fileRepo := createFileRepo(fileStore)
+func NewFactory() *Factory {
+	return &Factory{
+		mutex:                &sync.Mutex{},
+		fileSystemInstance:   nil,
+		fileStoreInstance:    nil,
+		userStoreInstance:    nil,
+		sessionStoreInstance: nil,
+	}
+}
 
-	fsStore := createFileSystem(logger)
+func (f *Factory) CreateFileService() *service.File {
+	logger := f.GetLogger()
+
+	fileStore := f.getFileStore(logger)
+	fileRepo := f.createFileRepo(fileStore)
+
+	fsStore := f.getFileSystem(logger)
 
 	return service.NewFile(fileRepo, fsStore, logger)
 }
 
-func CreateUserService() *service.User {
-	logger := GetLogger()
+func (f *Factory) CreateUserService() *service.User {
+	logger := f.GetLogger()
 
-	userStore := createUserStore(logger)
-	userRepo := createUserRepo(userStore)
-	sessionStore := createSessionStore(logger)
-	sessionRepo := createSessionRepo(sessionStore)
-	bcrypt := createHasher()
-	rawChecker := createRawPasswordChecker()
+	userStore := f.getUserStore(logger)
+	userRepo := f.createUserRepo(userStore)
+	sessionStore := f.getSessionStore(logger)
+	sessionRepo := f.createSessionRepo(sessionStore)
+	bcrypt := f.createHasher()
+	rawChecker := f.createRawPasswordChecker()
 
 	return service.NewUser(userRepo, sessionRepo, bcrypt, rawChecker, logger)
 }
 
-func CreateSessionService() *service.Session {
-	logger := GetLogger()
+func (f *Factory) CreateSessionService() *service.Session {
+	logger := f.GetLogger()
 
-	sessionStore := createSessionStore(logger)
-	sessionRepo := createSessionRepo(sessionStore)
+	sessionStore := f.getSessionStore(logger)
+	sessionRepo := f.createSessionRepo(sessionStore)
 
 	return service.NewSession(sessionRepo, logger)
 }
 
-func createFileSystem(logger log.Logger) *store.FileSystem {
-	wd, err := os.Getwd()
-	if err != nil {
-		panic(err)
+func (f *Factory) getFileSystem(logger log.Logger) service.FileSystem {
+	if f.fileSystemInstance == nil {
+		wd, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+
+		f.fileSystemInstance = store.NewFileSystem(logger, filepath.Join(wd, "files"))
 	}
 
-	return store.NewFileSystem(logger, path.Join(wd, "files"))
+	return f.fileSystemInstance
 }
 
-func createFileStore(logger log.Logger) *store.File {
-	return store.NewFile(logger, "data/files.json")
+func (f *Factory) SetFileSystem(fs service.FileSystem) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	f.fileSystemInstance = fs
 }
 
-func createFileRepo(fileStore repo.Store) *repo.File {
+func (f *Factory) getFileStore(logger log.Logger) repo.Store {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if f.fileStoreInstance == nil {
+		f.fileStoreInstance = store.NewFile(logger, filepath.Join("data", "files.json"))
+	}
+
+	return f.fileStoreInstance
+}
+
+func (f *Factory) SetFileStore(storeInstance repo.Store) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	f.fileStoreInstance = storeInstance
+}
+
+func (f *Factory) createFileRepo(fileStore repo.Store) *repo.File {
 	return repo.NewFile(fileStore)
 }
 
-func createUserStore(logger log.Logger) *store.File {
-	return store.NewFile(logger, "data/users.json")
+func (f *Factory) getUserStore(logger log.Logger) repo.Store {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if f.userStoreInstance == nil {
+		f.userStoreInstance = store.NewFile(logger, filepath.Join("data", "users.json"))
+	}
+
+	return f.userStoreInstance
 }
 
-func createUserRepo(userStore repo.Store) *repo.User {
+func (f *Factory) SetUserStore(storeInstance repo.Store) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	f.userStoreInstance = storeInstance
+}
+
+func (f *Factory) createUserRepo(userStore repo.Store) *repo.User {
 	return repo.NewUser(userStore)
 }
 
-func createSessionStore(logger log.Logger) *store.File {
-	return store.NewFile(logger, "data/sessions.json")
+func (f *Factory) getSessionStore(logger log.Logger) repo.Store {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if f.sessionStoreInstance == nil {
+		f.sessionStoreInstance = store.NewFile(logger, filepath.Join("data", "sessions.json"))
+	}
+
+	return f.sessionStoreInstance
 }
 
-func createSessionRepo(sessionStore repo.Store) *repo.Session {
+func (f *Factory) SetSessionStore(storeInstance repo.Store) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	f.sessionStoreInstance = storeInstance
+}
+
+func (f *Factory) createSessionRepo(sessionStore repo.Store) *repo.Session {
 	return repo.NewSession(sessionStore)
 }
 
-func createHasher() *password.Bcrypt {
+func (f *Factory) createHasher() *password.Bcrypt {
 	return password.NewBcrypt()
 }
 
-func createRawPasswordChecker() *password.Checker {
+func (f *Factory) createRawPasswordChecker() *password.Checker {
 	return password.NewChecker()
 }
 
-func GetLogger() log.Logger {
+func (f *Factory) GetLogger() log.Logger {
 	return log.DefaultLogger
 }

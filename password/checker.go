@@ -20,17 +20,28 @@ func NewChecker() *Checker {
 	return &Checker{minimumEntropy: defaultMinimumEntropy}
 }
 
+// NewCheckerWithEntropy creates a new Checker with a custom minimum entropy.
+func NewCheckerWithEntropy(minimumEntropy float64) *Checker {
+	return &Checker{minimumEntropy: minimumEntropy}
+}
+
+const bcryptPasswordMaxLength = 72
+
 // IsOK checks if the password is strong enough and not in the pwned password database.
 func (p Checker) IsOK(password string) error {
-	if p.IsPwned() {
+	if len(password) > bcryptPasswordMaxLength {
+		return apperr.ErrPasswordTooLong
+	}
+
+	if p.isPwned() {
 		return apperr.ErrPwnedPassword
 	}
 
-	return p.IsStrongEnough(password)
+	return p.isStrongEnough(password)
 }
 
-// IsStrongEnough checks if the password is strong enough.
-func (p Checker) IsStrongEnough(password string) error {
+// isStrongEnough checks if the password is strong enough.
+func (p Checker) isStrongEnough(password string) error {
 	err := passwordValidator.Validate(password, p.minimumEntropy)
 	if err != nil {
 		return fmt.Errorf("password is not strong enough: %w", err)
@@ -39,8 +50,8 @@ func (p Checker) IsStrongEnough(password string) error {
 	return nil
 }
 
-// IsPwned checks if the password is in the pwned password database.
-func (p Checker) IsPwned() bool {
+// isPwned checks if the password is in the pwned password database.
+func (p Checker) isPwned() bool {
 	//nolint:godox // It would be a nice feature, but it's considered to be an overkill for now
 	// TODO: Implement this function (maybe?)
 	return false

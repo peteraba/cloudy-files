@@ -16,3 +16,9 @@ var ErrLockTimeout = errors.New("lock timeout")
 
 // ErrPwnedPassword is returned when the password is in the pwned password database.
 var ErrPwnedPassword = errors.New("password is pwned")
+
+// ErrPasswordTooLong is returned when the password is too long.
+var ErrPasswordTooLong = errors.New("password is too long")
+
+// ErrInvalidArgument is returned when a method is called with an invalid argument.
+var ErrInvalidArgument = errors.New("invalid argument")

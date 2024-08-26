@@ -193,6 +193,7 @@ linters-settings:
     # Default: []
     ignore-names:
       - err
+      - tt
     # Optional list of variable declarations that should be ignored completely.
     # Entries must be in one of the following forms (see below for examples):
     # - for variables, parameters, named return values, method receivers, or type parameters:
@@ -283,6 +284,9 @@ issues:
     - text: ".Unlock`"
       linters:
         - errcheck
+    - path: "compose/compose.go"
+      linters:
+        - ireturn
     - text: "default"
       linters:
         - gochecknoglobals
@@ -300,8 +304,10 @@ issues:
     - path: "_test.go"
       linters:
         - dupl
+        - funlen
         - gochecknoglobals
         - gocognit
         - gocritic
         - gocyclo
         - maintidx
+        - wsl

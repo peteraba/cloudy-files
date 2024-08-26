@@ -3,7 +3,7 @@ package store
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 
 	"github.com/phuslu/log"
 )
@@ -24,10 +24,10 @@ func NewFileSystem(logger log.Logger, rootPath string) *FileSystem {
 
 // Write writes the given data to the file with the given name using the root path.
 // Subdirectory creation is not supported.
-func (r *FileSystem) Write(name string, data []byte) error {
-	r.logger.Debug().Msg("writing file: " + name)
+func (fs *FileSystem) Write(name string, data []byte) error {
+	fs.logger.Debug().Msg("writing file: " + name)
 
-	err := os.WriteFile(path.Join(r.root, name), data, defaultPermissions)
+	err := os.WriteFile(filepath.Join(fs.root, name), data, defaultPermissions)
 	if err != nil {
 		return fmt.Errorf("error writing file: %w", err)
 	}
@@ -36,10 +36,10 @@ func (r *FileSystem) Write(name string, data []byte) error {
 }
 
 // Read reads the file with the given name using the root path.
-func (r *FileSystem) Read(name string) ([]byte, error) {
-	r.logger.Debug().Msg("reading file: " + name)
+func (fs *FileSystem) Read(name string) ([]byte, error) {
+	fs.logger.Debug().Msg("reading file: " + name)
 
-	data, err := os.ReadFile(path.Join(r.root, name))
+	data, err := os.ReadFile(filepath.Join(fs.root, name))
 	if err != nil {
 		return nil, fmt.Errorf("error reading file: %w", err)
 	}

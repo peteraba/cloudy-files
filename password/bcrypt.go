@@ -16,6 +16,10 @@ func NewBcrypt() *Bcrypt {
 	return &Bcrypt{cost: bcrypt.DefaultCost}
 }
 
+func NewBcryptWithCost(cost int) *Bcrypt {
+	return &Bcrypt{cost: cost}
+}
+
 // Hash returns the bcrypt hash of the password.
 func (b Bcrypt) Hash(password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), b.cost)

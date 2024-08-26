@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/peteraba/cloudy-files/cli"
+	"github.com/peteraba/cloudy-files/compose"
 )
 
 func main() {
 	start := time.Now()
 
-	cliApp := cli.NewApp()
+	cliApp := cli.NewApp(compose.NewFactory())
 
 	if len(os.Args) <= 1 {
 		cliApp.ExitWithHelp("Please provide a command.")
@@ -28,8 +29,6 @@ func main() {
 		cliApp.CheckPassword()
 	case "checkPasswordHash":
 		cliApp.CheckPasswordHash()
-	case "startSession":
-		cliApp.StartSession()
 	case "checkSession":
 		cliApp.CheckSession()
 	case "cleanUp":

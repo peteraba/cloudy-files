@@ -127,9 +127,11 @@ func (f *File) createEntries(data []byte) error {
 
 	entries := make(map[string]FileModel)
 
-	err := json.Unmarshal(data, &entries)
-	if err != nil {
-		return fmt.Errorf("error unmarshaling data: %w", err)
+	if len(data) > 0 {
+		err := json.Unmarshal(data, &entries)
+		if err != nil {
+			return fmt.Errorf("error unmarshaling data: %w", err)
+		}
 	}
 
 	f.entries = entries

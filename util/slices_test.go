@@ -15,31 +15,19 @@ func BenchmarkIntersectionSmall(b *testing.B) {
 
 	b.Run("intersection30", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionSmall(slice150[:30], slice150[:30])
+			util.IntersectionSmall(slice150[:30], slice150[10:40])
 		}
 	})
 
-	b.Run("intersection75", func(b *testing.B) {
+	b.Run("intersection70", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionSmall(slice150[:75], slice150[:75])
+			util.IntersectionSmall(slice150[:75], slice150[50:120])
 		}
 	})
 
-	b.Run("intersection100", func(b *testing.B) {
+	b.Run("intersection125", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionSmall(slice150[:100], slice150[:100])
-		}
-	})
-
-	b.Run("intersection100+", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			util.IntersectionSmall(slice150[:75], slice150[:150])
-		}
-	})
-
-	b.Run("intersection150", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			util.IntersectionSmall(slice150, slice150)
+			util.IntersectionSmall(slice150[25:], slice150[:125])
 		}
 	})
 }
@@ -50,31 +38,19 @@ func BenchmarkIntersectionLarge(b *testing.B) {
 
 	b.Run("intersection30", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionLarge(slice150[:30], slice150[:30])
+			util.IntersectionLarge(slice150[:30], slice150[10:40])
 		}
 	})
 
-	b.Run("intersection75", func(b *testing.B) {
+	b.Run("intersection70", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionLarge(slice150[:75], slice150[:75])
+			util.IntersectionLarge(slice150[:75], slice150[50:120])
 		}
 	})
 
-	b.Run("intersection100", func(b *testing.B) {
+	b.Run("intersection125", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionLarge(slice150[:100], slice150[:100])
-		}
-	})
-
-	b.Run("intersection100+", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			util.IntersectionLarge(slice150[:75], slice150[:150])
-		}
-	})
-
-	b.Run("intersection150", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			util.IntersectionLarge(slice150, slice150)
+			util.IntersectionLarge(slice150[25:], slice150[:125])
 		}
 	})
 }
@@ -85,31 +61,19 @@ func BenchmarkIntersection(b *testing.B) {
 
 	b.Run("intersection30", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.Intersection(slice150[:30], slice150[:30])
+			util.Intersection(slice150[:30], slice150[10:40])
 		}
 	})
 
-	b.Run("intersection75", func(b *testing.B) {
+	b.Run("intersection70", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.Intersection(slice150[:75], slice150[:75])
+			util.Intersection(slice150[:75], slice150[50:120])
 		}
 	})
 
-	b.Run("intersection100", func(b *testing.B) {
+	b.Run("intersection125", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.Intersection(slice150[:100], slice150[:100])
-		}
-	})
-
-	b.Run("intersection100+", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			util.Intersection(slice150[:75], slice150[:150])
-		}
-	})
-
-	b.Run("intersection150", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			util.Intersection(slice150, slice150)
+			util.Intersection(slice150[25:], slice150[:125])
 		}
 	})
 }
@@ -133,15 +97,15 @@ func TestIntersection(t *testing.T) {
 	t.Run("large", func(t *testing.T) {
 		t.Parallel()
 
-		slice30 := make([]string, 30)
-		gofakeit.Slice(&slice30)
+		slice200 := make([]string, 200)
+		gofakeit.Slice(&slice200)
 
-		intersection := util.Intersection(slice30[:20], slice30[10:])
-		reverse := util.Intersection(slice30[10:], slice30[:20])
+		intersection := util.Intersection(slice200[:125], slice200[75:])
+		reverse := util.Intersection(slice200[75:], slice200[:125])
 
 		assert.Equal(t, intersection, reverse)
-		assert.GreaterOrEqual(t, len(intersection), 10)
-		assert.LessOrEqual(t, len(intersection), 13) // This is somewhat made up, but even 3 extra match is highly unlikely
+		assert.GreaterOrEqual(t, len(intersection), 50)
+		assert.LessOrEqual(t, len(intersection), 60) // This is somewhat made up, but even 10 extra match is highly unlikely
 	})
 }
 

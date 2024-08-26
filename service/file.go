@@ -11,11 +11,11 @@ import (
 
 type File struct {
 	logger log.Logger
-	repo   fileRepo
-	store  fileSystem
+	repo   FileRepo
+	store  FileSystem
 }
 
-func NewFile(repo fileRepo, store fileSystem, logger log.Logger) *File {
+func NewFile(repo FileRepo, store FileSystem, logger log.Logger) *File {
 	return &File{
 		logger: logger,
 		repo:   repo,

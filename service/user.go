@@ -9,14 +9,14 @@ import (
 // User is a service that provides user-related operations.
 type User struct {
 	logger          log.Logger
-	repo            userRepo
-	sessionRepo     sessionRepo
-	passwordHasher  passwordHasher
-	passwordChecker passwordChecker
+	repo            UserRepo
+	sessionRepo     SessionRepo
+	passwordHasher  PasswordHasher
+	passwordChecker PasswordChecker
 }
 
 // NewUser creates a new User service.
-func NewUser(repo userRepo, sessionRepo sessionRepo, passwordHasher passwordHasher, passwordChecker passwordChecker, logger log.Logger) *User {
+func NewUser(repo UserRepo, sessionRepo SessionRepo, passwordHasher PasswordHasher, passwordChecker PasswordChecker, logger log.Logger) *User {
 	return &User{
 		logger:          logger,
 		repo:            repo,
@@ -84,8 +84,8 @@ func (u *User) HashPassword(password string) (string, error) {
 	return hash, nil
 }
 
-// CheckHash checks if the given hash is a valid has for the given password.
-func (u *User) CheckHash(password, hash string) error {
+// CheckPasswordHash checks if the given hash is a valid has for the given password.
+func (u *User) CheckPasswordHash(password, hash string) error {
 	err := u.passwordHasher.Check(password, hash)
 	if err != nil {
 		return fmt.Errorf("failed to check password: %w", err)

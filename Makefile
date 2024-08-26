@@ -10,4 +10,9 @@ lint:
 
 .PHONY: test
 test: lint
-	go test -bench=. ./...
+	go test -v -bench=. --race ./...
+	#go test -v -fuzz=. ./password
+
+.PHONY: tmp
+tmp:
+	go test -v -bench=. --race ./service

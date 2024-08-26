@@ -10,11 +10,15 @@ import (
 )
 
 // App represents the command line interface.
-type App struct{}
+type App struct {
+	factory *compose.Factory
+}
 
 // NewApp creates a new App instance.
-func NewApp() *App {
-	return &App{}
+func NewApp(factory *compose.Factory) *App {
+	return &App{
+		factory: factory,
+	}
 }
 
 // Help prints the help message.
@@ -30,7 +34,7 @@ func (a *App) HashPassword() {
 
 	password := os.Args[2]
 
-	userService := compose.CreateUserService()
+	userService := a.factory.CreateUserService()
 
 	hash, err := userService.HashPassword(password)
 	if err != nil {
@@ -49,7 +53,7 @@ func (a *App) Login() {
 	userName := os.Args[2]
 	pass := os.Args[3]
 
-	userService := compose.CreateUserService()
+	userService := a.factory.CreateUserService()
 
 	hash, err := userService.Login(userName, pass)
 	if err != nil {
@@ -68,7 +72,7 @@ func (a *App) CheckPassword() {
 	userName := os.Args[2]
 	pass := os.Args[3]
 
-	userService := compose.CreateUserService()
+	userService := a.factory.CreateUserService()
 
 	err := userService.CheckPassword(userName, pass)
 	if err != nil {
@@ -87,30 +91,14 @@ func (a *App) CheckPasswordHash() {
 	password := os.Args[2]
 	hash := os.Args[3]
 
-	userService := compose.CreateUserService()
+	userService := a.factory.CreateUserService()
 
-	err := userService.CheckHash(password, hash)
+	err := userService.CheckPasswordHash(password, hash)
 	if err != nil {
 		a.Exit("Password does not match", err)
 	}
 
 	fmt.Println("Password matches")
-}
-
-// StartSession starts a session for a user.
-func (a *App) StartSession() {
-	if len(os.Args) <= 2 {
-		a.ExitWithHelp("Please provide a name to start a session for")
-	}
-
-	sessionService := compose.CreateSessionService()
-
-	hash, err := sessionService.Start(os.Args[2])
-	if err != nil {
-		a.Exit("Session could not be started", err)
-	}
-
-	fmt.Println(hash)
 }
 
 // CheckSession checks if a session exists.
@@ -119,7 +107,7 @@ func (a *App) CheckSession() {
 		a.ExitWithHelp("Please provide a name and a hashPassword to check")
 	}
 
-	sessionService := compose.CreateSessionService()
+	sessionService := a.factory.CreateSessionService()
 
 	ok, err := sessionService.Check(os.Args[2], os.Args[3])
 	if err != nil {
@@ -131,7 +119,7 @@ func (a *App) CheckSession() {
 
 // CleanUp cleans up all sessions.
 func (a *App) CleanUp() {
-	sessionService := compose.CreateSessionService()
+	sessionService := a.factory.CreateSessionService()
 
 	err := sessionService.CleanUp()
 	if err != nil {
@@ -147,7 +135,7 @@ func (a *App) CreateUser() {
 		a.ExitWithHelp("Please provide at least name, email, password to create a user")
 	}
 
-	userService := compose.CreateUserService()
+	userService := a.factory.CreateUserService()
 
 	name := os.Args[2]
 	email := os.Args[3]
@@ -195,7 +183,7 @@ func (a *App) Upload() {
 		a.Exit("File could not be read", err)
 	}
 
-	fileService := compose.CreateFileService()
+	fileService := a.factory.CreateFileService()
 
 	err = fileService.Upload(stats.Name(), data, access)
 	if err != nil {
@@ -223,7 +211,7 @@ func (a *App) Size() {
 		access = os.Args[3:]
 	}
 
-	fileService := compose.CreateFileService()
+	fileService := a.factory.CreateFileService()
 
 	data, err := fileService.Retrieve(stats.Name(), access)
 	if err != nil {

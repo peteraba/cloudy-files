@@ -8,12 +8,12 @@ import (
 
 // Session represents a session service.
 type Session struct {
-	repo   sessionRepo
+	repo   SessionRepo
 	logger log.Logger
 }
 
 // NewSession creates a new session instance.
-func NewSession(repo sessionRepo, logger log.Logger) *Session {
+func NewSession(repo SessionRepo, logger log.Logger) *Session {
 	return &Session{
 		repo:   repo,
 		logger: logger,
@@ -28,16 +28,6 @@ func (s *Session) Check(name, hash string) (bool, error) {
 	}
 
 	return ok, nil
-}
-
-// Start starts a new session.
-func (s *Session) Start(name string) (string, error) {
-	hash, err := s.repo.Start(name)
-	if err != nil {
-		return "", fmt.Errorf("failed to start session: %w", err)
-	}
-
-	return hash, nil
 }
 
 // CleanUp cleans up sessions.

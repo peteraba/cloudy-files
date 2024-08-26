@@ -49,9 +49,11 @@ func (s *Session) createEntries(data []byte) error {
 
 	entries := make(map[string]SessionModel)
 
-	err := json.Unmarshal(data, &entries)
-	if err != nil {
-		return fmt.Errorf("error unmarshaling data: %w", err)
+	if len(data) > 0 {
+		err := json.Unmarshal(data, &entries)
+		if err != nil {
+			return fmt.Errorf("error unmarshaling data: %w", err)
+		}
 	}
 
 	s.entries = entries
