@@ -9,112 +9,107 @@ import (
 	"github.com/peteraba/cloudy-files/util"
 )
 
-var slice300 = make([]string, 300)
-
-func benchmarkSetup() {
-	if slice300[0] == "" {
-		gofakeit.Slice(&slice300)
-	}
-}
-
 func BenchmarkIntersectionSmall(b *testing.B) {
-	benchmarkSetup()
+	slice150 := make([]string, 150)
+	gofakeit.Slice(&slice150)
 
 	b.Run("intersection30", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionSmall(slice300[:30], slice300[:30])
+			util.IntersectionSmall(slice150[:30], slice150[:30])
 		}
 	})
 
 	b.Run("intersection75", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionSmall(slice300[:75], slice300[:75])
+			util.IntersectionSmall(slice150[:75], slice150[:75])
 		}
 	})
 
 	b.Run("intersection100", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionSmall(slice300[:100], slice300[:100])
+			util.IntersectionSmall(slice150[:100], slice150[:100])
 		}
 	})
 
 	b.Run("intersection100+", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionSmall(slice300[:75], slice300[:150])
+			util.IntersectionSmall(slice150[:75], slice150[:150])
 		}
 	})
 
 	b.Run("intersection150", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionSmall(slice300[:150], slice300[:150])
+			util.IntersectionSmall(slice150, slice150)
 		}
 	})
 }
 
 func BenchmarkIntersectionLarge(b *testing.B) {
-	benchmarkSetup()
+	slice150 := make([]string, 150)
+	gofakeit.Slice(&slice150)
 
 	b.Run("intersection30", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionLarge(slice300[:30], slice300[:30])
+			util.IntersectionLarge(slice150[:30], slice150[:30])
 		}
 	})
 
 	b.Run("intersection75", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionLarge(slice300[:75], slice300[:75])
+			util.IntersectionLarge(slice150[:75], slice150[:75])
 		}
 	})
 
 	b.Run("intersection100", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionLarge(slice300[:100], slice300[:100])
+			util.IntersectionLarge(slice150[:100], slice150[:100])
 		}
 	})
 
 	b.Run("intersection100+", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionLarge(slice300[:75], slice300[:150])
+			util.IntersectionLarge(slice150[:75], slice150[:150])
 		}
 	})
 
 	b.Run("intersection150", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.IntersectionLarge(slice300[:150], slice300[:150])
+			util.IntersectionLarge(slice150, slice150)
 		}
 	})
 }
 
 func BenchmarkIntersection(b *testing.B) {
-	benchmarkSetup()
+	slice150 := make([]string, 150)
+	gofakeit.Slice(&slice150)
 
 	b.Run("intersection30", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.Intersection(slice300[:30], slice300[:30])
+			util.Intersection(slice150[:30], slice150[:30])
 		}
 	})
 
 	b.Run("intersection75", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.Intersection(slice300[:75], slice300[:75])
+			util.Intersection(slice150[:75], slice150[:75])
 		}
 	})
 
 	b.Run("intersection100", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.Intersection(slice300[:100], slice300[:100])
+			util.Intersection(slice150[:100], slice150[:100])
 		}
 	})
 
 	b.Run("intersection100+", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.Intersection(slice300[:75], slice300[:150])
+			util.Intersection(slice150[:75], slice150[:150])
 		}
 	})
 
 	b.Run("intersection150", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			util.Intersection(slice300[:150], slice300[:150])
+			util.Intersection(slice150, slice150)
 		}
 	})
 }
@@ -138,8 +133,11 @@ func TestIntersection(t *testing.T) {
 	t.Run("large", func(t *testing.T) {
 		t.Parallel()
 
-		intersection := util.Intersection(slice300[:20], slice300[10:30])
-		reverse := util.Intersection(slice300[10:30], slice300[:20])
+		slice30 := make([]string, 30)
+		gofakeit.Slice(&slice30)
+
+		intersection := util.Intersection(slice30[:20], slice30[10:])
+		reverse := util.Intersection(slice30[10:], slice30[:20])
 
 		assert.Equal(t, intersection, reverse)
 		assert.GreaterOrEqual(t, len(intersection), 10)
