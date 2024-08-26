@@ -40,3 +40,10 @@ jobs:
         with:
           name: coverage-report
           path: coverage/coverage.out
+
+      - name: Codacy Coverage Reporter
+        uses: codacy/codacy-coverage-reporter-action@v1.3.0
+        with: # Set the secret as an input
+          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          coverage-reports: coverage/coverage.out
+          language: go
