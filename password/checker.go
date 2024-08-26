@@ -1,10 +1,11 @@
 package password
 
 import (
-	"errors"
 	"fmt"
 
 	passwordValidator "github.com/wagslane/go-password-validator"
+
+	"github.com/peteraba/cloudy-files/apperr"
 )
 
 // Checker is a struct that checks if a password is good enough.
@@ -19,13 +20,10 @@ func NewChecker() *Checker {
 	return &Checker{minimumEntropy: defaultMinimumEntropy}
 }
 
-// ErrPwnedPassword is returned when the password is in the pwned password database.
-var ErrPwnedPassword = errors.New("password is pwned")
-
 // IsOK checks if the password is strong enough and not in the pwned password database.
 func (p Checker) IsOK(password string) error {
 	if p.IsPwned() {
-		return ErrPwnedPassword
+		return apperr.ErrPwnedPassword
 	}
 
 	return p.IsStrongEnough(password)

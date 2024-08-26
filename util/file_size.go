@@ -2,16 +2,18 @@ package util
 
 import "fmt"
 
+// FileSize represents a file size with units.
 type FileSize struct {
 	Unit string
 	Size int
 }
 
+// String returns the string representation of the file size.
 func (f FileSize) String() string {
 	return fmt.Sprintf("%d %s", f.Size, f.Unit)
 }
 
-// sdkfsd.
+// FileSizeFromSize returns a FileSize instance from the given size.
 func FileSizeFromSize(size int) FileSize {
 	units := []string{"bytes", "KB", "MB", "GB", "TB", "PB"}
 

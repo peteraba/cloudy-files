@@ -1,12 +1,13 @@
 package store
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/phuslu/log"
+
+	"github.com/peteraba/cloudy-files/apperr"
 )
 
 // File is a file-based Store implementation.
@@ -121,8 +122,6 @@ func (f *File) WriteLocked(data []byte) error {
 
 var defaultWaitTime = 100 * time.Millisecond
 
-var ErrLockTimeout = errors.New("lock timeout")
-
 // waitForLock waits for the lock file to be removed by any other process
 // which may hold it. It retries for a maximum of N times.
 func (f *File) waitForLock() error {
@@ -141,7 +140,7 @@ func (f *File) waitForLock() error {
 		count++
 
 		if count > f.maxRetries {
-			return fmt.Errorf("error waiting for lock file: %s, err: %w", f.lockFileName, ErrLockTimeout)
+			return fmt.Errorf("error waiting for lock file: %s, err: %w", f.lockFileName, apperr.ErrLockTimeout)
 		}
 
 		time.Sleep(defaultWaitTime)

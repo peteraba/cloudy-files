@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+
+	"github.com/peteraba/cloudy-files/apperr"
 )
 
 // UserModel represents a user model.
@@ -70,7 +72,7 @@ func (u *User) Get(name string) (UserModel, error) {
 
 	entry, ok := u.entries[name]
 	if !ok {
-		return UserModel{}, fmt.Errorf("user not found: %s, err: %w", name, ErrNotFound)
+		return UserModel{}, fmt.Errorf("user not found: %s, err: %w", name, apperr.ErrNotFound)
 	}
 
 	return entry, nil
@@ -89,7 +91,7 @@ func (u *User) Create(name, email, password string, isAdmin bool, access []strin
 
 	_, ok := u.entries[name]
 	if ok {
-		return fmt.Errorf("user already exists: %s, err: %w", name, ErrExists)
+		return fmt.Errorf("user already exists: %s, err: %w", name, apperr.ErrExists)
 	}
 
 	u.entries[name] = UserModel{

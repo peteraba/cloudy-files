@@ -8,11 +8,13 @@ import (
 	"github.com/phuslu/log"
 )
 
+// FileSystem can store and retrieve any file from a directory.
 type FileSystem struct {
 	logger log.Logger
 	root   string
 }
 
+// NewFileSystem creates a new FileSystem instance.
 func NewFileSystem(logger log.Logger, rootPath string) *FileSystem {
 	return &FileSystem{
 		logger: logger,

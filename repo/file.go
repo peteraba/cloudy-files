@@ -2,9 +2,10 @@ package repo
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/peteraba/cloudy-files/apperr"
 )
 
 // FileModel represents a file model.
@@ -29,36 +30,6 @@ func NewFile(store Store) *File {
 	}
 }
 
-// createEntries creates entries from data retrieved from store.
-func (f *File) createEntries(data []byte) error {
-	f.lock.Lock()
-	defer f.lock.Unlock()
-
-	entries := make(map[string]FileModel)
-
-	err := json.Unmarshal(data, &entries)
-	if err != nil {
-		return fmt.Errorf("error unmarshaling data: %w", err)
-	}
-
-	f.entries = entries
-
-	return nil
-}
-
-// getData returns the data to be stored in the store.
-func (f *File) getData() ([]byte, error) {
-	data, err := json.Marshal(f.entries)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling data: %w", err)
-	}
-
-	return data, nil
-}
-
-// ErrFileNotFound represents a file not found error.
-var ErrFileNotFound = errors.New("file not found")
-
 // Get retrieves a file by name.
 func (f *File) Get(name string) (FileModel, error) {
 	err := f.read()
@@ -71,7 +42,7 @@ func (f *File) Get(name string) (FileModel, error) {
 
 	entry, ok := f.entries[name]
 	if !ok {
-		return FileModel{}, fmt.Errorf("file not found: %s, err: %w", name, ErrFileNotFound)
+		return FileModel{}, fmt.Errorf("file not found: %s, err: %w", name, apperr.ErrNotFound)
 	}
 
 	return entry, nil
@@ -101,6 +72,7 @@ func (f *File) Create(name string, access []string) error {
 	return nil
 }
 
+// read reads the session data from the store and creates entries.
 func (f *File) read() error {
 	data, err := f.store.Read()
 	if err != nil {
@@ -146,4 +118,31 @@ func (f *File) writeAfterRead() error {
 	}
 
 	return nil
+}
+
+// createEntries creates entries from data retrieved from store.
+func (f *File) createEntries(data []byte) error {
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	entries := make(map[string]FileModel)
+
+	err := json.Unmarshal(data, &entries)
+	if err != nil {
+		return fmt.Errorf("error unmarshaling data: %w", err)
+	}
+
+	f.entries = entries
+
+	return nil
+}
+
+// getData returns the data to be stored in the store.
+func (f *File) getData() ([]byte, error) {
+	data, err := json.Marshal(f.entries)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling data: %w", err)
+	}
+
+	return data, nil
 }

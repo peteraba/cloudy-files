@@ -5,6 +5,7 @@ import (
 
 	"github.com/phuslu/log"
 
+	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/util"
 )
 
@@ -45,7 +46,7 @@ func (f *File) Retrieve(name string, access []string) ([]byte, error) {
 	}
 
 	if len(util.Intersection(file.Access, access)) == 0 {
-		return nil, fmt.Errorf("access denied: %w", ErrAccessDenied)
+		return nil, fmt.Errorf("access denied: %w", apperr.ErrAccessDenied)
 	}
 
 	data, err := f.store.Read(name)
