@@ -300,7 +300,8 @@ issues:
     - path: "_test.go"
       linters:
         - dupl
-        - gocritic
+        - gochecknoglobals
         - gocognit
-        - maintidx
+        - gocritic
         - gocyclo
+        - maintidx

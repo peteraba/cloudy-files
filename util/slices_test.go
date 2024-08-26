@@ -11,11 +11,15 @@ import (
 
 var slice300 = make([]string, 300)
 
-func init() {
-	gofakeit.Slice(&slice300)
+func benchmarkSetup() {
+	if slice300[0] == "" {
+		gofakeit.Slice(&slice300)
+	}
 }
 
 func BenchmarkIntersectionSmall(b *testing.B) {
+	benchmarkSetup()
+
 	b.Run("intersection30", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			util.IntersectionSmall(slice300[:30], slice300[:30])
@@ -48,6 +52,8 @@ func BenchmarkIntersectionSmall(b *testing.B) {
 }
 
 func BenchmarkIntersectionLarge(b *testing.B) {
+	benchmarkSetup()
+
 	b.Run("intersection30", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			util.IntersectionLarge(slice300[:30], slice300[:30])
@@ -80,6 +86,8 @@ func BenchmarkIntersectionLarge(b *testing.B) {
 }
 
 func BenchmarkIntersection(b *testing.B) {
+	benchmarkSetup()
+
 	b.Run("intersection30", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			util.Intersection(slice300[:30], slice300[:30])
