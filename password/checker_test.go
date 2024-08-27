@@ -1,6 +1,7 @@
 package password_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,6 +12,15 @@ import (
 
 func TestChecker_IsOK(t *testing.T) {
 	t.Parallel()
+
+	t.Run("fail on password too long", func(t *testing.T) {
+		t.Parallel()
+
+		sut := password.NewChecker()
+
+		err := sut.IsOK(strings.Repeat("a", 73))
+		require.Error(t, err)
+	})
 
 	type fields struct {
 		minimumEntropy float64

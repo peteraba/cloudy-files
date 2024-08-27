@@ -21,6 +21,29 @@ func TestUser_Create_and_Login(t *testing.T) {
 
 	sut := factory.CreateUserService()
 
+	t.Run("logging in with wrong password does not work", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		stubName := gofakeit.Name()
+		stubEmail := gofakeit.Email()
+		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
+		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
+
+		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+		require.NoError(t, err)
+
+		// extra
+		wrongPassword := stubPassword + " "
+		err = sut.CheckPassword(stubName, wrongPassword)
+		require.Error(t, err)
+
+		// execute
+		sessionHash, err := sut.Login(stubName, wrongPassword)
+		require.Error(t, err)
+		require.Empty(t, sessionHash)
+	})
+
 	t.Run("non-admin user can log in", func(t *testing.T) {
 		t.Parallel()
 

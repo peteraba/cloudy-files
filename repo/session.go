@@ -93,7 +93,7 @@ func (s *Session) Check(name, hash string) (bool, error) {
 		return false, nil
 	}
 
-	return storedValue.Hash == hash && storedValue.Expires > now, nil
+	return storedValue.Hash == hash, nil
 }
 
 const hashLength = 32

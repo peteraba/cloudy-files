@@ -69,3 +69,39 @@ func TestSession_Check(t *testing.T) {
 		assert.True(t, exists)
 	})
 }
+
+func TestSession_CleanUp(t *testing.T) {
+	t.Parallel()
+
+	factory := compose.NewFactory()
+
+	storeStub := store.NewInMemoryFile()
+
+	factory.SetSessionStore(storeStub)
+
+	sut := factory.CreateSessionService()
+
+	t.Run("clean up sessions", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		storeData := []byte(`{"peter":{"hash":"foobar","expires":0}}`)
+
+		err := storeStub.Write(storeData)
+		require.NoError(t, err)
+
+		// verify
+		data, err := storeStub.Read()
+		require.NoError(t, err)
+		require.Greater(t, len(data), 2)
+
+		// execute
+		err = sut.CleanUp()
+		require.NoError(t, err)
+
+		// assert
+		data, err = storeStub.Read()
+		require.NoError(t, err)
+		require.LessOrEqual(t, len(data), 2)
+	})
+}

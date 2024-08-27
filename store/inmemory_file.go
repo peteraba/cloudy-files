@@ -43,6 +43,7 @@ func (imf *InMemoryFile) Write(data []byte) error {
 
 	// Locking the file
 	imf.lock()
+	defer imf.Unlock()
 
 	imf.data = data
 

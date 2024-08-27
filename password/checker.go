@@ -33,10 +33,6 @@ func (p Checker) IsOK(password string) error {
 		return apperr.ErrPasswordTooLong
 	}
 
-	if p.isPwned() {
-		return apperr.ErrPwnedPassword
-	}
-
 	return p.isStrongEnough(password)
 }
 
@@ -48,11 +44,4 @@ func (p Checker) isStrongEnough(password string) error {
 	}
 
 	return nil
-}
-
-// isPwned checks if the password is in the pwned password database.
-func (p Checker) isPwned() bool {
-	//nolint:godox // It would be a nice feature, but it's considered to be an overkill for now
-	// TODO: Implement this function (maybe?)
-	return false
 }

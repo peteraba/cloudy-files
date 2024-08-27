@@ -3,6 +3,7 @@ package password_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/peteraba/cloudy-files/password"
@@ -31,5 +32,23 @@ func FuzzBcrypt(f *testing.F) {
 
 		err = sut.Check(orig, hash)
 		require.NoError(t, err)
+	})
+}
+
+func TestBcrypt_Check(t *testing.T) {
+	t.Parallel()
+
+	t.Run("password is incorrect", func(t *testing.T) {
+		t.Parallel()
+
+		stubPassword := "password"
+		stubHash := "password"
+
+		sut := password.NewBcrypt()
+
+		err := sut.Check(stubPassword, stubHash)
+		require.Error(t, err)
+
+		assert.ErrorContains(t, err, "password is incorrect")
 	})
 }
