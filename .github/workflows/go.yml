@@ -37,15 +37,10 @@ jobs:
           mkdir -p coverage
           go test -coverprofile=coverage/coverage.out ./...
 
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage-report
-          path: coverage/coverage.out
+      - name: Install goveralls
+        run: go install github.com/mattn/goveralls@latest
 
-      - name: Codacy Coverage Reporter
-        uses: codacy/codacy-coverage-reporter-action@v1.3.0
-        with: # Set the secret as an input
-          project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
-          coverage-reports: coverage/coverage.out
-          language: go
+      - name: Send coverage
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: goveralls -coverprofile=covprofile -service=github
