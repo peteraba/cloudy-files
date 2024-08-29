@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/compose"
 	"github.com/peteraba/cloudy-files/password"
 	"github.com/peteraba/cloudy-files/service"
@@ -121,7 +122,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		assert.ErrorContains(t, err, "error unmarshaling data")
 	})
 
-	t.Run("logging in with wrong password does not work", func(t *testing.T) {
+	t.Run("fail logging in with wrong password", func(t *testing.T) {
 		t.Parallel()
 
 		// data
@@ -148,6 +149,49 @@ func TestUser_Create_and_Login(t *testing.T) {
 
 		// assert
 		assert.ErrorContains(t, err, "password does not match")
+	})
+
+	t.Run("login fails if user can not be found", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		stubName := gofakeit.Name()
+		stubPassword := ""
+
+		// setup
+		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
+
+		// execute
+		hash, err := sut.Login(stubName, stubPassword)
+		require.Error(t, err)
+		require.Empty(t, hash)
+
+		// assert
+		assert.ErrorIs(t, err, apperr.ErrNotFound)
+	})
+
+	t.Run("login fails if session start fails", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		stubName := gofakeit.Name()
+		stubEmail := gofakeit.Email()
+		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
+		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
+
+		// setup
+		sut := setup(t, unusedSpy, unusedSpy, nil, []byte("invalid json"))
+
+		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+		require.NoError(t, err)
+
+		// execute
+		hash, err := sut.Login(stubName, stubPassword)
+		require.Error(t, err)
+		require.Empty(t, hash)
+
+		// assert
+		assert.ErrorContains(t, err, "error unmarshaling data")
 	})
 
 	t.Run("non-admin user can log in", func(t *testing.T) {

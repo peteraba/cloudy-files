@@ -18,7 +18,13 @@ type File struct {
 	maxRetries   int
 }
 
-const defaultMaxRetries = 10
+// DefaultWaitTime is the default time to wait between retries.
+var DefaultWaitTime = 100 * time.Millisecond
+
+const (
+	defaultMaxRetries  = 10
+	defaultPermissions = 0o600
+)
 
 // NewFile creates a new file instance.
 func NewFile(logger log.Logger, fileName string) *File {
@@ -33,7 +39,7 @@ func NewFile(logger log.Logger, fileName string) *File {
 // Read reads the file without acquiring the lock.
 func (f *File) Read() ([]byte, error) {
 	// Waiting for the lock to avoid reading inconsistent data
-	err := f.waitForLock()
+	err := f.waitForLockToBeRemoved()
 	if err != nil {
 		return nil, fmt.Errorf("error waiting for lock: %w", err)
 	}
@@ -52,7 +58,7 @@ func (f *File) Read() ([]byte, error) {
 // ReadForWrite reads the file after acquiring the lock.
 func (f *File) ReadForWrite() ([]byte, error) {
 	// Waiting for the lock to be able to lock the file
-	err := f.waitForLock()
+	err := f.waitForLockToBeRemoved()
 	if err != nil {
 		return nil, fmt.Errorf("error waiting for lock: %w", err)
 	}
@@ -74,11 +80,9 @@ func (f *File) ReadForWrite() ([]byte, error) {
 	return data, nil
 }
 
-const defaultPermissions = 0o600
-
 // Write writes the data to the file after acquiring the lock.
 func (f *File) Write(data []byte) error {
-	err := f.waitForLock()
+	err := f.waitForLockToBeRemoved()
 	if err != nil {
 		return fmt.Errorf("error waiting for lock: %w", err)
 	}
@@ -87,13 +91,16 @@ func (f *File) Write(data []byte) error {
 	if err != nil {
 		return fmt.Errorf("error locking file: %w", err)
 	}
+	defer f.Unlock()
 
-	f.logger.Debug().Msg("writing file")
+	f.logger.Debug().Str("method", "Write").Msg("writing file")
 
 	err = os.WriteFile(f.fileName, data, defaultPermissions)
 	if err != nil {
 		return fmt.Errorf("error writing file: %w", err)
 	}
+
+	f.logger.Debug().Str("method", "Write").Msg("file written")
 
 	return nil
 }
@@ -101,49 +108,65 @@ func (f *File) Write(data []byte) error {
 // WriteLocked writes data to the file after acquiring a lock
 // used in pair with ReadForWrite.
 // It returns an error if the lock file does not exist.
+// It will unlock the file after writing.
 func (f *File) WriteLocked(data []byte) error {
 	// Checking if the lock file exists
 	_, err := os.Stat(f.lockFileName)
+
+	// Unexpected error
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("error checking lock file: %s, err: %w", f.lockFileName, err)
-	} else if os.IsNotExist(err) {
+	}
+	defer f.Unlock()
+
+	// Lock file does not exist (it should)
+	if err != nil && os.IsNotExist(err) {
 		return fmt.Errorf("lock file does not exist: %s, err: %w", f.lockFileName, err)
 	}
 
-	f.logger.Debug().Msg("writing file")
+	// Writing the file
+	f.logger.Debug().Str("method", "WriteLocked").Msg("writing file")
 
 	err = os.WriteFile(f.fileName, data, defaultPermissions)
 	if err != nil {
 		return fmt.Errorf("error writing file: %w", err)
 	}
 
+	f.logger.Debug().Str("method", "WriteLocked").Msg("file written")
+
 	return nil
 }
 
-var defaultWaitTime = 100 * time.Millisecond
-
-// waitForLock waits for the lock file to be removed by any other process
+// waitForLockToBeRemoved waits for the lock file to be removed by any other process
 // which may hold it. It retries for a maximum of N times.
-func (f *File) waitForLock() error {
-	f.logger.Debug().Msg("waiting for lock")
+func (f *File) waitForLockToBeRemoved() error {
+	f.logger.Debug().Msg("waiting for lock to be removed")
 
 	count := 0
 
 	for {
 		_, err := os.Stat(f.lockFileName)
-		if err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("error checking lock file: %s, err: %w", f.lockFileName, err)
-		} else if os.IsNotExist(err) {
+		// We're good to go, lock does not exist anymore
+		if err != nil && os.IsNotExist(err) {
+			f.logger.Debug().Msg("lock file does not exist, continue")
+
 			return nil
 		}
+		// Unexpected error
+		if err != nil {
+			return fmt.Errorf("error checking lock file: %s, err: %w", f.lockFileName, err)
+		}
 
+		f.logger.Debug().Msg("lock file exists")
+
+		// Retrying logic
 		count++
 
 		if count > f.maxRetries {
 			return fmt.Errorf("error waiting for lock file: %s, err: %w", f.lockFileName, apperr.ErrLockTimeout)
 		}
 
-		time.Sleep(defaultWaitTime)
+		time.Sleep(DefaultWaitTime)
 	}
 }
 
@@ -171,7 +194,9 @@ func (f *File) Unlock() error {
 	_, err := os.Stat(f.lockFileName)
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("error checking lock file: %s, err: %w", f.lockFileName, err)
-	} else if os.IsNotExist(err) {
+	}
+
+	if err != nil && os.IsNotExist(err) {
 		return fmt.Errorf("lock file does not exist: %s, err: %w", f.lockFileName, err)
 	}
 

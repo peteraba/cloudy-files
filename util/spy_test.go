@@ -170,3 +170,43 @@ func TestSpy_GetError(t *testing.T) {
 		})
 	}
 }
+
+func TestSpy_Reset(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		methodName string
+		args       util.InAndOut
+	}{
+		{
+			name:       "no args",
+			methodName: "foo",
+			args:       util.InAndOut{Calls: 0, Skip: 0, In: nil, Out: assert.AnError},
+		},
+		{
+			name:       "args",
+			methodName: "foo",
+			args:       util.InAndOut{Calls: 0, Skip: 0, In: []interface{}{util.Any}, Out: assert.AnError},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			// data
+
+			// setup
+			sut := util.NewSpy()
+
+			sut.Register(tt.methodName, tt.args.Skip, tt.args.Out, tt.args.In...)
+
+			// execute
+			sut.Reset()
+
+			// assert
+			actual := sut.GetError(tt.methodName, tt.args.In...)
+			assert.NoError(t, actual, "GetError(%s[, %v])", tt.methodName, tt.args.In)
+		})
+	}
+}

@@ -14,6 +14,7 @@ var defaultSessionTime = time.Minute * 30
 // SessionModel represents a session model.
 type SessionModel struct {
 	Hash    string `json:"hash"`
+	IsAdmin bool   `json:"is_admin"`
 	Expires int64  `json:"expires"`
 }
 
@@ -117,6 +118,7 @@ func (s *Session) Start(name string) (string, error) {
 	s.entries[name] = SessionModel{
 		Hash:    hash,
 		Expires: time.Now().Add(defaultSessionTime).Unix(),
+		IsAdmin: false,
 	}
 
 	err = s.writeAfterRead()

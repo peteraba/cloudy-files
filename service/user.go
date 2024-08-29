@@ -43,7 +43,7 @@ func (u *User) Create(name, email, password string, isAdmin bool, access []strin
 	return nil
 }
 
-// Login logs in a user with the given username and password.
+// Login logs in a user with the given username and password and returns a session hash.
 func (u *User) Login(userName, password string) (string, error) {
 	user, err := u.repo.Get(userName)
 	if err != nil {
