@@ -301,12 +301,17 @@ issues:
     - text: "logger is heavy"
       linters:
         - gocritic
+    - text: "GetError"
+      linters:
+        - wrapcheck
     - path: "_test.go"
       linters:
         - dupl
+        - exhaustruct
         - funlen
         - gochecknoglobals
         - gocognit
+        - goconst
         - gocritic
         - gocyclo
         - maintidx

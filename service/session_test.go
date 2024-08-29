@@ -8,51 +8,84 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/peteraba/cloudy-files/compose"
+	"github.com/peteraba/cloudy-files/service"
 	"github.com/peteraba/cloudy-files/store"
+	"github.com/peteraba/cloudy-files/util"
 )
 
 func TestSession_Check(t *testing.T) {
 	t.Parallel()
 
-	factory := compose.NewFactory()
+	unusedSpy := util.NewSpy()
 
-	factory.SetSessionStore(store.NewInMemoryFile())
-	factory.SetUserStore(store.NewInMemoryFile())
-	factory.SetSessionStore(store.NewInMemoryFile())
+	setup := func(t *testing.T, sessionStoreSpy, userStoreSpy *util.Spy) (*service.Session, *service.User) {
+		t.Helper()
 
-	userService := factory.CreateUserService()
+		factory := compose.NewFactory()
 
-	sut := factory.CreateSessionService()
+		factory.SetSessionStore(store.NewInMemoryFile(sessionStoreSpy))
+		factory.SetUserStore(store.NewInMemoryFile(userStoreSpy))
+
+		return factory.CreateSessionService(), factory.CreateUserService()
+	}
+
+	t.Run("fails when store returns error", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
+		stubHash := gofakeit.UUID()
+
+		// setup
+		sessionStoreSpy := util.NewSpy()
+		sessionStoreSpy.Register("Read", 0, assert.AnError)
+
+		sut, _ := setup(t, sessionStoreSpy, unusedSpy)
+
+		// execute
+		result, err := sut.Check(stubPassword, stubHash)
+
+		// assert
+		require.Error(t, err)
+		assert.False(t, result)
+		assert.ErrorIs(t, err, assert.AnError)
+	})
 
 	t.Run("session is invalid without a login", func(t *testing.T) {
 		t.Parallel()
 
-		// setup
+		// data
 		stubName := gofakeit.Name()
 		stubEmail := gofakeit.Email()
 		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
 		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
 		stubHash := gofakeit.UUID()
 
+		// setup
+		sut, userService := setup(t, unusedSpy, unusedSpy)
+
 		err := userService.Create(stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
 
 		// execute
 		exists, err := sut.Check(stubName, stubHash)
-		require.NoError(t, err)
 
 		// assert
+		require.NoError(t, err)
 		assert.False(t, exists)
 	})
 
 	t.Run("logged in user has valid session", func(t *testing.T) {
 		t.Parallel()
 
-		// setup
+		// data
 		stubName := gofakeit.Name()
 		stubEmail := gofakeit.Email()
 		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
 		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
+
+		// setup
+		sut, userService := setup(t, unusedSpy, unusedSpy)
 
 		err := userService.Create(stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
@@ -63,9 +96,9 @@ func TestSession_Check(t *testing.T) {
 
 		// execute
 		exists, err := sut.Check(stubName, sessionHash)
-		require.NoError(t, err)
 
 		// assert
+		require.NoError(t, err)
 		assert.True(t, exists)
 	})
 }
@@ -73,35 +106,53 @@ func TestSession_Check(t *testing.T) {
 func TestSession_CleanUp(t *testing.T) {
 	t.Parallel()
 
-	factory := compose.NewFactory()
+	unusedSpy := util.NewSpy()
 
-	storeStub := store.NewInMemoryFile()
+	setup := func(t *testing.T, sessionStoreSpy *util.Spy, sessionData []byte) *service.Session {
+		t.Helper()
 
-	factory.SetSessionStore(storeStub)
+		sessionStore := store.NewInMemoryFile(sessionStoreSpy)
+		err := sessionStore.Write(sessionData)
+		require.NoError(t, err)
 
-	sut := factory.CreateSessionService()
+		factory := compose.NewFactory()
 
-	t.Run("clean up sessions", func(t *testing.T) {
+		factory.SetSessionStore(sessionStore)
+
+		return factory.CreateSessionService()
+	}
+
+	t.Run("fails when store returns error", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+
+		// setup
+		sessionStoreSpy := util.NewSpy()
+		sessionStoreSpy.Register("ReadForWrite", 0, assert.AnError)
+
+		sut := setup(t, sessionStoreSpy, nil)
+
+		// execute
+		err := sut.CleanUp()
+
+		// assert
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
 		storeData := []byte(`{"peter":{"hash":"foobar","expires":0}}`)
 
-		err := storeStub.Write(storeData)
-		require.NoError(t, err)
-
-		// verify
-		data, err := storeStub.Read()
-		require.NoError(t, err)
-		require.Greater(t, len(data), 2)
+		sut := setup(t, unusedSpy, storeData)
 
 		// execute
-		err = sut.CleanUp()
-		require.NoError(t, err)
+		err := sut.CleanUp()
 
 		// assert
-		data, err = storeStub.Read()
 		require.NoError(t, err)
-		require.LessOrEqual(t, len(data), 2)
 	})
 }

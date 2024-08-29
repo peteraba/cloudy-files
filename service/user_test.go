@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v7"
@@ -8,27 +9,108 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/peteraba/cloudy-files/compose"
+	"github.com/peteraba/cloudy-files/service"
 	"github.com/peteraba/cloudy-files/store"
+	"github.com/peteraba/cloudy-files/util"
 )
 
 func TestUser_Create_and_Login(t *testing.T) {
 	t.Parallel()
 
-	factory := compose.NewFactory()
+	unusedSpy := util.NewSpy()
 
-	factory.SetUserStore(store.NewInMemoryFile())
-	factory.SetSessionStore(store.NewInMemoryFile())
+	setup := func(t *testing.T, userStoreSpy, sessionStoreSpy *util.Spy, userData, sessionData []byte) *service.User {
+		t.Helper()
 
-	sut := factory.CreateUserService()
+		userStore := store.NewInMemoryFile(userStoreSpy)
+		err := userStore.Write(userData)
+		require.NoError(t, err)
 
-	t.Run("logging in with wrong password does not work", func(t *testing.T) {
+		sessionStore := store.NewInMemoryFile(sessionStoreSpy)
+		err = sessionStore.Write(sessionData)
+		require.NoError(t, err)
+
+		factory := compose.NewFactory()
+
+		factory.SetUserStore(userStore)
+		factory.SetSessionStore(sessionStore)
+
+		return factory.CreateUserService()
+	}
+
+	t.Run("fail to create user when passing is not OK", func(t *testing.T) {
 		t.Parallel()
 
+		// data
+		stubName := gofakeit.Name()
+		stubEmail := gofakeit.Email()
+		stubPassword := strings.Repeat("foobar", 20)
+		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
+
 		// setup
+		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
+
+		// execute
+		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+
+		// assert
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "password is not OK")
+	})
+
+	t.Run("fail to create user when user store fails to read", func(t *testing.T) {
+		t.Parallel()
+
+		// data
 		stubName := gofakeit.Name()
 		stubEmail := gofakeit.Email()
 		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
 		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
+
+		// setup
+		userStoreSpy := (util.NewSpy()).Register("ReadForWrite", 0, assert.AnError)
+
+		sut := setup(t, userStoreSpy, unusedSpy, nil, nil)
+
+		// execute
+		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+
+		// assert
+		require.Error(t, err)
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("fail to create user when user store reads invalid data", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		stubName := gofakeit.Name()
+		stubEmail := gofakeit.Email()
+		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
+		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
+
+		// setup
+		sut := setup(t, unusedSpy, unusedSpy, []byte("invalid json"), nil)
+
+		// execute
+		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+
+		// assert
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "error unmarshaling data")
+	})
+
+	t.Run("logging in with wrong password does not work", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		stubName := gofakeit.Name()
+		stubEmail := gofakeit.Email()
+		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
+		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
+
+		// setup
+		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 
 		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
@@ -47,11 +129,14 @@ func TestUser_Create_and_Login(t *testing.T) {
 	t.Run("non-admin user can log in", func(t *testing.T) {
 		t.Parallel()
 
-		// setup
+		// data
 		stubName := gofakeit.Name()
 		stubEmail := gofakeit.Email()
 		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
 		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
+
+		// setup
+		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 
 		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
@@ -71,10 +156,13 @@ func TestUser_Create_and_Login(t *testing.T) {
 	t.Run("can create an admin user and user can log in", func(t *testing.T) {
 		t.Parallel()
 
-		// setup
+		// data
 		stubName := gofakeit.Name()
 		stubEmail := gofakeit.Email()
 		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
+
+		// setup
+		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 
 		err := sut.Create(stubName, stubEmail, stubPassword, true, []string{})
 		require.NoError(t, err)
@@ -94,9 +182,11 @@ func TestUser_Create_and_Login(t *testing.T) {
 	t.Run("password can be checked", func(t *testing.T) {
 		t.Parallel()
 
-		// setup
+		// data
 		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
 
+		// setup
+		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 		passwordHash, err := sut.HashPassword(stubPassword)
 		require.NoError(t, err)
 

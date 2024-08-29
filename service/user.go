@@ -26,6 +26,23 @@ func NewUser(repo UserRepo, sessionRepo SessionRepo, passwordHasher PasswordHash
 	}
 }
 
+// Create creates a new user.
+// It hashes the password and stores the user in the repository.
+// It also checks if the raw password is OK.
+func (u *User) Create(name, email, password string, isAdmin bool, access []string) error {
+	hash, err := u.HashPassword(password)
+	if err != nil {
+		return err
+	}
+
+	err = u.repo.Create(name, email, hash, isAdmin, access)
+	if err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+
+	return nil
+}
+
 // Login logs in a user with the given username and password.
 func (u *User) Login(userName, password string) (string, error) {
 	user, err := u.repo.Get(userName)
@@ -89,23 +106,6 @@ func (u *User) CheckPasswordHash(password, hash string) error {
 	err := u.passwordHasher.Check(password, hash)
 	if err != nil {
 		return fmt.Errorf("failed to check password: %w", err)
-	}
-
-	return nil
-}
-
-// Create creates a new user.
-// It hashes the password and stores the user in the repository.
-// It also checks if the raw password is OK.
-func (u *User) Create(name, email, password string, isAdmin bool, access []string) error {
-	hash, err := u.HashPassword(password)
-	if err != nil {
-		return err
-	}
-
-	err = u.repo.Create(name, email, hash, isAdmin, access)
-	if err != nil {
-		return fmt.Errorf("failed to create user: %w", err)
 	}
 
 	return nil

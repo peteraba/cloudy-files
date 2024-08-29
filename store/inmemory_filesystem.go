@@ -5,17 +5,20 @@ import (
 	"sync"
 
 	"github.com/peteraba/cloudy-files/apperr"
+	"github.com/peteraba/cloudy-files/util"
 )
 
 type InMemoryFileSystem struct {
 	m    *sync.RWMutex
 	data map[string][]byte
+	spy  *util.Spy
 }
 
-func NewInMemoryFileSystem() *InMemoryFileSystem {
+func NewInMemoryFileSystem(spy *util.Spy) *InMemoryFileSystem {
 	return &InMemoryFileSystem{
 		m:    &sync.RWMutex{},
 		data: make(map[string][]byte),
+		spy:  spy,
 	}
 }
 
@@ -23,6 +26,10 @@ func NewInMemoryFileSystem() *InMemoryFileSystem {
 func (imfs *InMemoryFileSystem) Write(name string, data []byte) error {
 	imfs.m.Lock()
 	defer imfs.m.Unlock()
+
+	if err := imfs.spy.GetError("Write", name, data); err != nil {
+		return err
+	}
 
 	imfs.data[name] = data
 
@@ -33,6 +40,10 @@ func (imfs *InMemoryFileSystem) Write(name string, data []byte) error {
 func (imfs *InMemoryFileSystem) Read(name string) ([]byte, error) {
 	imfs.m.RLock()
 	defer imfs.m.RUnlock()
+
+	if err := imfs.spy.GetError("Read", name); err != nil {
+		return nil, err
+	}
 
 	if data, ok := imfs.data[name]; ok {
 		return data, nil

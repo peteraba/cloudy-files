@@ -3,17 +3,22 @@ package store
 import (
 	"errors"
 	"sync"
+
+	"github.com/peteraba/cloudy-files/util"
 )
 
 type InMemoryFile struct {
 	m    *sync.Mutex
 	data []byte
+	spy  *util.Spy
 }
 
-func NewInMemoryFile() *InMemoryFile {
+// NewInMemoryFile creates a new InMemoryFile instance.
+func NewInMemoryFile(spy *util.Spy) *InMemoryFile {
 	return &InMemoryFile{
 		m:    &sync.Mutex{},
 		data: make([]byte, 0),
+		spy:  spy,
 	}
 }
 
@@ -22,11 +27,19 @@ func (imf *InMemoryFile) Read() ([]byte, error) {
 	// Waiting for the lock to avoid reading inconsistent data
 	imf.waitForLock()
 
+	if err := imf.spy.GetError("Read"); err != nil {
+		return nil, err
+	}
+
 	return imf.data, nil
 }
 
 // ReadForWrite reads the file after acquiring the lock.
 func (imf *InMemoryFile) ReadForWrite() ([]byte, error) {
+	if err := imf.spy.GetError("ReadForWrite"); err != nil {
+		return nil, err
+	}
+
 	// Waiting for the lock to be able to lock the file
 	imf.waitForLock()
 
@@ -38,6 +51,10 @@ func (imf *InMemoryFile) ReadForWrite() ([]byte, error) {
 
 // Write writes the data to the file after acquiring the lock.
 func (imf *InMemoryFile) Write(data []byte) error {
+	if err := imf.spy.GetError("Write", data); err != nil {
+		return err
+	}
+
 	// Waiting for the lock to be able to lock the file
 	imf.waitForLock()
 
@@ -56,6 +73,10 @@ var ErrLockDoesNotExist = errors.New("lock not locked")
 // used in pair with ReadForWrite.
 // It returns an error if the lock file does not exist.
 func (imf *InMemoryFile) WriteLocked(data []byte) error {
+	if err := imf.spy.GetError("WriteLocked", data); err != nil {
+		return err
+	}
+
 	if imf.m.TryLock() {
 		defer imf.m.Unlock()
 

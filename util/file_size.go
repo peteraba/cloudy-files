@@ -10,6 +10,10 @@ type FileSize struct {
 
 // String returns the string representation of the file size.
 func (f FileSize) String() string {
+	if f.Size == 0 {
+		return "0"
+	}
+
 	return fmt.Sprintf("%d %s", f.Size, f.Unit)
 }
 

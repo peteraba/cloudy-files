@@ -1,6 +1,7 @@
 package password_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ func FuzzBcrypt(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, orig string) {
 		if len(orig) > 72 {
-			t.Skip()
+			orig = string([]byte(orig)[:72])
 		}
 
 		hash, err := sut.Hash(orig)
@@ -32,6 +33,43 @@ func FuzzBcrypt(f *testing.F) {
 
 		err = sut.Check(orig, hash)
 		require.NoError(t, err)
+	})
+}
+
+func TestBcrypt_Hash(t *testing.T) {
+	t.Parallel()
+
+	t.Run("fail to hash too long password", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		stubPassword := strings.Repeat("foobar", 20)
+
+		sut := password.NewBcrypt()
+
+		// execute
+		_, err := sut.Hash(stubPassword)
+		require.Error(t, err)
+
+		// assert
+		assert.ErrorContains(t, err, "password length exceeds")
+	})
+
+	t.Run("can hash crazy unicode characters", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		stubPassword := "ő✈♸⛄" //nolint:gosec // This is an example password, no need to worry.
+
+		sut := password.NewBcrypt()
+
+		// execute
+		hash, err := sut.Hash(stubPassword)
+		require.NoError(t, err)
+
+		// assert
+		assert.NotEmpty(t, hash)
+		assert.NoError(t, sut.Check(stubPassword, hash))
 	})
 }
 

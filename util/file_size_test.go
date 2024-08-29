@@ -8,6 +8,49 @@ import (
 	"github.com/peteraba/cloudy-files/util"
 )
 
+func TestFileSize_String(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		sut  util.FileSize
+		want string
+	}{
+		{
+			name: "empty",
+			sut:  util.FileSize{Unit: "", Size: 0},
+			want: "0",
+		},
+		{
+			name: "1 KB",
+			sut:  util.FileSize{Unit: "KB", Size: 1},
+			want: "1 KB",
+		},
+		{
+			name: "1023 KB",
+			sut:  util.FileSize{Unit: "KB", Size: 1023},
+			want: "1023 KB",
+		},
+		{
+			name: "99 MB",
+			sut:  util.FileSize{Unit: "MB", Size: 99},
+			want: "99 MB",
+		},
+		{
+			name: "479 GB",
+			sut:  util.FileSize{Unit: "GB", Size: 479},
+			want: "479 GB",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, tt.sut.String())
+		})
+	}
+}
+
 func TestFileSizeFromSize(t *testing.T) {
 	t.Parallel()
 

@@ -29,7 +29,8 @@ const bcryptPasswordMaxLength = 72
 
 // IsOK checks if the password is strong enough and not in the pwned password database.
 func (p Checker) IsOK(password string) error {
-	if len(password) > bcryptPasswordMaxLength {
+	// password length is checked as []byte to avoid issues with multibyte characters
+	if len([]byte(password)) > bcryptPasswordMaxLength {
 		return apperr.ErrPasswordTooLong
 	}
 
