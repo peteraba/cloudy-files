@@ -44,9 +44,9 @@ func TestSession_Check(t *testing.T) {
 
 		// execute
 		result, err := sut.Check(stubPassword, stubHash)
+		require.Error(t, err)
 
 		// assert
-		require.Error(t, err)
 		assert.False(t, result)
 		assert.ErrorIs(t, err, assert.AnError)
 	})
@@ -135,9 +135,9 @@ func TestSession_CleanUp(t *testing.T) {
 
 		// execute
 		err := sut.CleanUp()
+		require.Error(t, err)
 
 		// assert
-		require.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 	})
 

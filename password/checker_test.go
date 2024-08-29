@@ -1,13 +1,16 @@
 package password_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/password"
+	"github.com/peteraba/cloudy-files/util"
 )
 
 func TestChecker_IsOK(t *testing.T) {
@@ -16,10 +19,15 @@ func TestChecker_IsOK(t *testing.T) {
 	t.Run("fail on password too long", func(t *testing.T) {
 		t.Parallel()
 
+		// setup
 		sut := password.NewChecker()
 
+		// execute
 		err := sut.IsOK(strings.Repeat("a", 73))
 		require.Error(t, err)
+
+		// assert
+		assert.ErrorIs(t, err, apperr.ErrPasswordTooLong)
 	})
 
 	type fields struct {
@@ -32,7 +40,7 @@ func TestChecker_IsOK(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		wantErr string
+		wantErr assert.ErrorAssertionFunc
 	}{
 		{
 			name: "empty password",
@@ -40,7 +48,7 @@ func TestChecker_IsOK(t *testing.T) {
 				minimumEntropy: 0.1,
 			},
 			args:    args{password: ""},
-			wantErr: "insecure password",
+			wantErr: util.ErrorContains("insecure password"),
 		},
 		{
 			name: "weak password, low bar",
@@ -48,7 +56,7 @@ func TestChecker_IsOK(t *testing.T) {
 				minimumEntropy: 20.0,
 			},
 			args:    args{password: "helloWorld"},
-			wantErr: "",
+			wantErr: assert.NoError,
 		},
 		{
 			name: "weak password, normal bar",
@@ -56,7 +64,7 @@ func TestChecker_IsOK(t *testing.T) {
 				minimumEntropy: 60.0,
 			},
 			args:    args{password: "helloWorld"},
-			wantErr: "insecure password",
+			wantErr: util.ErrorContains("insecure password"),
 		},
 		{
 			name: "medium password, normal bar",
@@ -64,7 +72,7 @@ func TestChecker_IsOK(t *testing.T) {
 				minimumEntropy: 60.0,
 			},
 			args:    args{password: "helloWorld123"},
-			wantErr: "",
+			wantErr: assert.NoError,
 		},
 		{
 			name: "medium password, high bar",
@@ -72,7 +80,7 @@ func TestChecker_IsOK(t *testing.T) {
 				minimumEntropy: 100.0,
 			},
 			args:    args{password: "helloWorld123"},
-			wantErr: "insecure password",
+			wantErr: util.ErrorContains("insecure password"),
 		},
 		{
 			name: "high password, high bar",
@@ -80,23 +88,20 @@ func TestChecker_IsOK(t *testing.T) {
 				minimumEntropy: 100.0,
 			},
 			args:    args{password: "6LRFjZse6IYiBNGZlhrVEckQqt9i"},
-			wantErr: "",
+			wantErr: assert.NoError,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			// setup
 			sut := password.NewCheckerWithEntropy(tt.fields.minimumEntropy)
 
-			err := sut.IsOK(tt.args.password)
+			// execute
+			actual := sut.IsOK(tt.args.password)
 
-			if tt.wantErr == "" {
-				require.NoError(t, err)
-			} else {
-				require.Error(t, err)
-				assert.ErrorContains(t, err, tt.wantErr)
-			}
+			tt.wantErr(t, actual, fmt.Sprintf("IsOK(%v)", tt.args.password))
 		})
 	}
 }

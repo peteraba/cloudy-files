@@ -86,7 +86,7 @@ func (u *User) CheckPassword(userName, password string) error {
 	return nil
 }
 
-// HashPassword hashes the given password.
+// HashPassword hashes a given password.
 func (u *User) HashPassword(password string) (string, error) {
 	err := u.passwordChecker.IsOK(password)
 	if err != nil {
@@ -101,7 +101,7 @@ func (u *User) HashPassword(password string) (string, error) {
 	return hash, nil
 }
 
-// CheckPasswordHash checks if the given hash is a valid has for the given password.
+// CheckPasswordHash checks if the given hash is a valid hash for a given password.
 func (u *User) CheckPasswordHash(password, hash string) error {
 	err := u.passwordHasher.Check(password, hash)
 	if err != nil {

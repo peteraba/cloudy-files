@@ -14,20 +14,22 @@ import (
 )
 
 type Factory struct {
-	mutex                *sync.Mutex
-	fileSystemInstance   service.FileSystem
-	fileStoreInstance    repo.Store
-	userStoreInstance    repo.Store
-	sessionStoreInstance repo.Store
+	mutex                  *sync.Mutex
+	fileSystemInstance     service.FileSystem
+	fileStoreInstance      repo.Store
+	userStoreInstance      repo.Store
+	sessionStoreInstance   repo.Store
+	passwordHasherInstance service.PasswordHasher
 }
 
 func NewFactory() *Factory {
 	return &Factory{
-		mutex:                &sync.Mutex{},
-		fileSystemInstance:   nil,
-		fileStoreInstance:    nil,
-		userStoreInstance:    nil,
-		sessionStoreInstance: nil,
+		mutex:                  &sync.Mutex{},
+		fileSystemInstance:     nil,
+		fileStoreInstance:      nil,
+		userStoreInstance:      nil,
+		sessionStoreInstance:   nil,
+		passwordHasherInstance: nil,
 	}
 }
 
@@ -49,10 +51,10 @@ func (f *Factory) CreateUserService() *service.User {
 	userRepo := f.createUserRepo(userStore)
 	sessionStore := f.getSessionStore(logger)
 	sessionRepo := f.createSessionRepo(sessionStore)
-	bcrypt := f.createHasher()
+	hasher := f.getHasher()
 	rawChecker := f.createRawPasswordChecker()
 
-	return service.NewUser(userRepo, sessionRepo, bcrypt, rawChecker, logger)
+	return service.NewUser(userRepo, sessionRepo, hasher, rawChecker, logger)
 }
 
 func (f *Factory) CreateSessionService() *service.Session {
@@ -150,8 +152,22 @@ func (f *Factory) createSessionRepo(sessionStore repo.Store) *repo.Session {
 	return repo.NewSession(sessionStore)
 }
 
-func (f *Factory) createHasher() *password.Bcrypt {
-	return password.NewBcrypt()
+func (f *Factory) getHasher() service.PasswordHasher {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if f.passwordHasherInstance == nil {
+		f.passwordHasherInstance = password.NewBcryptHasher()
+	}
+
+	return f.passwordHasherInstance
+}
+
+func (f *Factory) SetHasher(hasher service.PasswordHasher) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	f.passwordHasherInstance = hasher
 }
 
 func (f *Factory) createRawPasswordChecker() *password.Checker {

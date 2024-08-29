@@ -212,6 +212,7 @@ func TestFile_Upload_and_Retrieve(t *testing.T) {
 
 		// assert
 		assert.Nil(t, data)
+		assert.ErrorIs(t, err, apperr.ErrAccessDenied)
 	})
 
 	t.Run("can upload file once and retrieve it multiple times", func(t *testing.T) {

@@ -45,7 +45,7 @@ func TestBcrypt_Hash(t *testing.T) {
 		// setup
 		stubPassword := strings.Repeat("foobar", 20)
 
-		sut := password.NewBcrypt()
+		sut := password.NewBcryptHasher()
 
 		// execute
 		_, err := sut.Hash(stubPassword)
@@ -61,7 +61,7 @@ func TestBcrypt_Hash(t *testing.T) {
 		// setup
 		stubPassword := "ő✈♸⛄" //nolint:gosec // This is an example password, no need to worry.
 
-		sut := password.NewBcrypt()
+		sut := password.NewBcryptHasher()
 
 		// execute
 		hash, err := sut.Hash(stubPassword)
@@ -79,14 +79,18 @@ func TestBcrypt_Check(t *testing.T) {
 	t.Run("password is incorrect", func(t *testing.T) {
 		t.Parallel()
 
+		// data
 		stubPassword := "password"
 		stubHash := "password"
 
-		sut := password.NewBcrypt()
+		// setup
+		sut := password.NewBcryptHasher()
 
+		// execute
 		err := sut.Check(stubPassword, stubHash)
 		require.Error(t, err)
 
+		// assert
 		assert.ErrorContains(t, err, "password is incorrect")
 	})
 }

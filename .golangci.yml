@@ -153,6 +153,10 @@ linters-settings:
     # Enable all checkers (https://github.com/Antonboom/testifylint#checkers).
     # Default: false
     enable-all: true
+    require-error:
+      # Regexp for assertions to analyze. If defined, then only matched error assertions will be reported.
+      # Default: ""
+      fn-pattern: ^(Errorf?|NoErrorf?)$
 
   unconvert:
     # Remove conversions that force intermediate rounding.

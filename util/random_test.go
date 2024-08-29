@@ -16,18 +16,22 @@ func TestRandomHex(t *testing.T) {
 	t.Run("should return an error if the random generation fails", func(t *testing.T) {
 		t.Parallel()
 
+		// execute
 		_, err := util.RandomHex(-1)
-
 		require.Error(t, err)
+
+		// assert
 		assert.ErrorIs(t, err, apperr.ErrInvalidArgument)
 	})
 
 	t.Run("should return a random hex string", func(t *testing.T) {
 		t.Parallel()
 
+		// execute
 		hex, err := util.RandomHex(10)
 		require.NoError(t, err)
 
+		// assert
 		assert.Len(t, hex, 10)
 	})
 }
