@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -31,8 +32,8 @@ func NewFile(store Store) *File {
 }
 
 // Get retrieves a file by name.
-func (f *File) Get(name string) (FileModel, error) {
-	err := f.read()
+func (f *File) Get(ctx context.Context, name string) (FileModel, error) {
+	err := f.read(ctx)
 	if err != nil {
 		return FileModel{}, fmt.Errorf("error reading file: %w", err)
 	}
@@ -49,12 +50,12 @@ func (f *File) Get(name string) (FileModel, error) {
 }
 
 // Create creates a file with the given name and access.
-func (f *File) Create(name string, access []string) error {
-	err := f.readForWrite()
+func (f *File) Create(ctx context.Context, name string, access []string) error {
+	err := f.readForWrite(ctx)
 	if err != nil {
 		return fmt.Errorf("error reading file: %w", err)
 	}
-	defer f.store.Unlock()
+	defer f.store.Unlock(ctx)
 
 	f.lock.Lock()
 	defer f.lock.Unlock()
@@ -64,7 +65,7 @@ func (f *File) Create(name string, access []string) error {
 		Access: access,
 	}
 
-	err = f.writeAfterRead()
+	err = f.writeAfterRead(ctx)
 	if err != nil {
 		return fmt.Errorf("error writing file: %w", err)
 	}
@@ -73,8 +74,8 @@ func (f *File) Create(name string, access []string) error {
 }
 
 // read reads the session data from the store and creates entries.
-func (f *File) read() error {
-	data, err := f.store.Read()
+func (f *File) read(ctx context.Context) error {
+	data, err := f.store.Read(ctx)
 	if err != nil {
 		return fmt.Errorf("error reading file: %w", err)
 	}
@@ -90,8 +91,8 @@ func (f *File) read() error {
 // readForWrite reads the session data from the store and creates entries.
 // IMPORTANT!!! Do not forget to unlock the store after writing!
 // Note: This function assumes that the store is NOT locked!
-func (f *File) readForWrite() error {
-	data, err := f.store.ReadForWrite()
+func (f *File) readForWrite(ctx context.Context) error {
+	data, err := f.store.ReadForWrite(ctx)
 	if err != nil {
 		return fmt.Errorf("error reading file: %w", err)
 	}
@@ -106,13 +107,13 @@ func (f *File) readForWrite() error {
 
 // writeAfterRead writes the current session data to the store.
 // Note: This function assumes that the store is locked.
-func (f *File) writeAfterRead() error {
+func (f *File) writeAfterRead(ctx context.Context) error {
 	data, err := f.getData()
 	if err != nil {
 		return fmt.Errorf("error getting data: %w", err)
 	}
 
-	err = f.store.WriteLocked(data)
+	err = f.store.WriteLocked(ctx, data)
 	if err != nil {
 		return fmt.Errorf("error storing data: %w", err)
 	}

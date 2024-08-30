@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -37,7 +38,7 @@ func NewFile(logger log.Logger, fileName string) *File {
 }
 
 // Read reads the file without acquiring the lock.
-func (f *File) Read() ([]byte, error) {
+func (f *File) Read(_ context.Context) ([]byte, error) {
 	// Waiting for the lock to avoid reading inconsistent data
 	err := f.waitForLockToBeRemoved()
 	if err != nil {
@@ -56,7 +57,7 @@ func (f *File) Read() ([]byte, error) {
 }
 
 // ReadForWrite reads the file after acquiring the lock.
-func (f *File) ReadForWrite() ([]byte, error) {
+func (f *File) ReadForWrite(_ context.Context) ([]byte, error) {
 	// Waiting for the lock to be able to lock the file
 	err := f.waitForLockToBeRemoved()
 	if err != nil {
@@ -81,7 +82,7 @@ func (f *File) ReadForWrite() ([]byte, error) {
 }
 
 // Write writes the data to the file after acquiring the lock.
-func (f *File) Write(data []byte) error {
+func (f *File) Write(ctx context.Context, data []byte) error {
 	err := f.waitForLockToBeRemoved()
 	if err != nil {
 		return fmt.Errorf("error waiting for lock: %w", err)
@@ -91,7 +92,7 @@ func (f *File) Write(data []byte) error {
 	if err != nil {
 		return fmt.Errorf("error locking file: %w", err)
 	}
-	defer f.Unlock()
+	defer f.Unlock(ctx)
 
 	f.logger.Debug().Str("method", "Write").Msg("writing file")
 
@@ -109,7 +110,7 @@ func (f *File) Write(data []byte) error {
 // used in pair with ReadForWrite.
 // It returns an error if the lock file does not exist.
 // It will unlock the file after writing.
-func (f *File) WriteLocked(data []byte) error {
+func (f *File) WriteLocked(ctx context.Context, data []byte) error {
 	// Checking if the lock file exists
 	_, err := os.Stat(f.lockFileName)
 
@@ -117,7 +118,7 @@ func (f *File) WriteLocked(data []byte) error {
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("error checking lock file: %s, err: %w", f.lockFileName, err)
 	}
-	defer f.Unlock()
+	defer f.Unlock(ctx)
 
 	// Lock file does not exist (it should)
 	if err != nil && os.IsNotExist(err) {
@@ -187,7 +188,7 @@ func (f *File) lock() error {
 
 // Unlock removes the lock file.
 // It returns an error if the lock file does not exist.
-func (f *File) Unlock() error {
+func (f *File) Unlock(_ context.Context) error {
 	f.logger.Debug().Msg("checking lock")
 
 	// Checking if the lock file exists

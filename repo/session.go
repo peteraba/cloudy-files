@@ -1,11 +1,13 @@
 package repo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/util"
 )
 
@@ -13,18 +15,19 @@ var defaultSessionTime = time.Minute * 30
 
 // SessionModel represents a session model.
 type SessionModel struct {
-	Hash    string `json:"hash"`
-	IsAdmin bool   `json:"is_admin"`
-	Expires int64  `json:"expires"`
+	Hash    string   `json:"hash"`
+	IsAdmin bool     `json:"is_admin"`
+	Expires int64    `json:"expires"`
+	Access  []string `json:"access"`
 }
 
 // Store represents a session store.
 type Store interface {
-	Read() ([]byte, error)
-	ReadForWrite() ([]byte, error)
-	WriteLocked(data []byte) error
-	Unlock() error
-	Write(data []byte) error
+	Read(ctx context.Context) ([]byte, error)
+	ReadForWrite(ctx context.Context) ([]byte, error)
+	WriteLocked(ctx context.Context, data []byte) error
+	Unlock(ctx context.Context) error
+	Write(ctx context.Context, data []byte) error
 }
 
 // Session represents a session.
@@ -72,26 +75,40 @@ func (s *Session) getData() ([]byte, error) {
 	return data, nil
 }
 
-// Check checks if the session is valid.
-func (s *Session) Check(name, hash string) (bool, error) {
-	data, err := s.store.Read()
+// Get gets the session.
+func (s *Session) Get(ctx context.Context, name, hash string) (SessionModel, error) {
+	data, err := s.store.Read(ctx)
 	if err != nil {
-		return false, fmt.Errorf("error reading file: %w", err)
+		return SessionModel{}, fmt.Errorf("error reading file: %w", err)
 	}
 
 	err = s.createEntries(data)
 	if err != nil {
-		return false, fmt.Errorf("error creating entries: %w", err)
+		return SessionModel{}, fmt.Errorf("error creating entries: %w", err)
 	}
 
 	storedValue, ok := s.entries[name]
 	if !ok {
-		return false, nil
+		return SessionModel{}, nil //nolint:exhaustruct // Checked
 	}
 
 	now := time.Now().Unix()
 	if storedValue.Expires < now {
-		return false, nil
+		return SessionModel{}, nil //nolint:exhaustruct // Checked
+	}
+
+	if storedValue.Hash != hash {
+		return SessionModel{}, apperr.ErrAccessDenied
+	}
+
+	return storedValue, nil
+}
+
+// Check checks if the session is valid.
+func (s *Session) Check(ctx context.Context, name, hash string) (bool, error) {
+	storedValue, err := s.Get(ctx, name, hash)
+	if err != nil {
+		return false, fmt.Errorf("error getting session: %w", err)
 	}
 
 	return storedValue.Hash == hash, nil
@@ -100,12 +117,12 @@ func (s *Session) Check(name, hash string) (bool, error) {
 const hashLength = 32
 
 // Start starts a new session.
-func (s *Session) Start(name string) (string, error) {
-	err := s.readForWrite()
+func (s *Session) Start(ctx context.Context, name string, isAdmin bool, access []string) (string, error) {
+	err := s.readForWrite(ctx)
 	if err != nil {
 		return "", err
 	}
-	defer s.store.Unlock()
+	defer s.store.Unlock(ctx)
 
 	hash, err := util.RandomHex(hashLength)
 	if err != nil {
@@ -118,10 +135,11 @@ func (s *Session) Start(name string) (string, error) {
 	s.entries[name] = SessionModel{
 		Hash:    hash,
 		Expires: time.Now().Add(defaultSessionTime).Unix(),
-		IsAdmin: false,
+		IsAdmin: isAdmin,
+		Access:  access,
 	}
 
-	err = s.writeAfterRead()
+	err = s.writeAfterRead(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -130,12 +148,12 @@ func (s *Session) Start(name string) (string, error) {
 }
 
 // CleanUp cleans up the session.
-func (s *Session) CleanUp() error {
-	err := s.readForWrite()
+func (s *Session) CleanUp(ctx context.Context) error {
+	err := s.readForWrite(ctx)
 	if err != nil {
 		return err
 	}
-	defer s.store.Unlock()
+	defer s.store.Unlock(ctx)
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -154,7 +172,7 @@ func (s *Session) CleanUp() error {
 		return nil
 	}
 
-	err = s.writeAfterRead()
+	err = s.writeAfterRead(ctx)
 	if err != nil {
 		return err
 	}
@@ -165,8 +183,8 @@ func (s *Session) CleanUp() error {
 // readForWrite reads the session data from the store and creates entries.
 // IMPORTANT!!! Do not forget to unlock the store after writing!
 // Note: This function assumes that the store is NOT locked!
-func (s *Session) readForWrite() error {
-	data, err := s.store.ReadForWrite()
+func (s *Session) readForWrite(ctx context.Context) error {
+	data, err := s.store.ReadForWrite(ctx)
 	if err != nil {
 		return fmt.Errorf("error reading file: %w", err)
 	}
@@ -181,13 +199,13 @@ func (s *Session) readForWrite() error {
 
 // writeAfterRead writes the current session data to the store.
 // Note: This function assumes that the store is locked.
-func (s *Session) writeAfterRead() error {
+func (s *Session) writeAfterRead(ctx context.Context) error {
 	data, err := s.getData()
 	if err != nil {
 		return fmt.Errorf("error getting data: %w", err)
 	}
 
-	err = s.store.WriteLocked(data)
+	err = s.store.WriteLocked(ctx, data)
 	if err != nil {
 		return fmt.Errorf("error storing data: %w", err)
 	}

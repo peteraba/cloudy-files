@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -23,7 +24,7 @@ func NewInMemoryFile(spy *util.Spy) *InMemoryFile {
 }
 
 // Read reads the file without acquiring the lock.
-func (imf *InMemoryFile) Read() ([]byte, error) {
+func (imf *InMemoryFile) Read(_ context.Context) ([]byte, error) {
 	// Waiting for the lock to avoid reading inconsistent data
 	imf.waitForLock()
 
@@ -35,7 +36,7 @@ func (imf *InMemoryFile) Read() ([]byte, error) {
 }
 
 // ReadForWrite reads the file after acquiring the lock.
-func (imf *InMemoryFile) ReadForWrite() ([]byte, error) {
+func (imf *InMemoryFile) ReadForWrite(_ context.Context) ([]byte, error) {
 	if err := imf.spy.GetError("ReadForWrite"); err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func (imf *InMemoryFile) ReadForWrite() ([]byte, error) {
 }
 
 // Write writes the data to the file after acquiring the lock.
-func (imf *InMemoryFile) Write(data []byte) error {
+func (imf *InMemoryFile) Write(ctx context.Context, data []byte) error {
 	if err := imf.spy.GetError("Write", data); err != nil {
 		return err
 	}
@@ -60,7 +61,7 @@ func (imf *InMemoryFile) Write(data []byte) error {
 
 	// Locking the file
 	imf.lock()
-	defer imf.Unlock()
+	defer imf.Unlock(ctx)
 
 	imf.data = data
 
@@ -72,7 +73,7 @@ var ErrLockDoesNotExist = errors.New("lock not locked")
 // WriteLocked writes data to the file after acquiring a lock
 // used in pair with ReadForWrite.
 // It returns an error if the lock file does not exist.
-func (imf *InMemoryFile) WriteLocked(data []byte) error {
+func (imf *InMemoryFile) WriteLocked(_ context.Context, data []byte) error {
 	if err := imf.spy.GetError("WriteLocked", data); err != nil {
 		return err
 	}
@@ -104,7 +105,7 @@ func (imf *InMemoryFile) lock() {
 }
 
 // Unlock removes the lock.
-func (imf *InMemoryFile) Unlock() error {
+func (imf *InMemoryFile) Unlock(_ context.Context) error {
 	imf.m.Unlock()
 
 	return nil

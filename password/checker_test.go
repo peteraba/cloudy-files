@@ -1,6 +1,7 @@
 package password_test
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -16,6 +17,8 @@ import (
 func TestChecker_IsOK(t *testing.T) {
 	t.Parallel()
 
+	ctx := context.Background()
+
 	t.Run("fail on password too long", func(t *testing.T) {
 		t.Parallel()
 
@@ -23,7 +26,7 @@ func TestChecker_IsOK(t *testing.T) {
 		sut := password.NewChecker()
 
 		// execute
-		err := sut.IsOK(strings.Repeat("a", 73))
+		err := sut.IsOK(ctx, strings.Repeat("a", 73))
 		require.Error(t, err)
 
 		// assert
@@ -99,7 +102,7 @@ func TestChecker_IsOK(t *testing.T) {
 			sut := password.NewCheckerWithEntropy(tt.fields.minimumEntropy)
 
 			// execute
-			actual := sut.IsOK(tt.args.password)
+			actual := sut.IsOK(ctx, tt.args.password)
 
 			tt.wantErr(t, actual, fmt.Sprintf("IsOK(%v)", tt.args.password))
 		})

@@ -1,6 +1,7 @@
 package repo
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -63,8 +64,8 @@ func (u *User) getData() ([]byte, error) {
 }
 
 // Get retrieves a user by name.
-func (u *User) Get(name string) (UserModel, error) {
-	err := u.read()
+func (u *User) Get(ctx context.Context, name string) (UserModel, error) {
+	err := u.read(ctx)
 	if err != nil {
 		return UserModel{}, err
 	}
@@ -81,12 +82,12 @@ func (u *User) Get(name string) (UserModel, error) {
 }
 
 // Create creates a new user.
-func (u *User) Create(name, email, password string, isAdmin bool, access []string) error {
-	err := u.readForWrite()
+func (u *User) Create(ctx context.Context, name, email, password string, isAdmin bool, access []string) error {
+	err := u.readForWrite(ctx)
 	if err != nil {
 		return err
 	}
-	defer u.store.Unlock()
+	defer u.store.Unlock(ctx)
 
 	u.lock.Lock()
 	defer u.lock.Unlock()
@@ -104,7 +105,7 @@ func (u *User) Create(name, email, password string, isAdmin bool, access []strin
 		IsAdmin:  isAdmin,
 	}
 
-	err = u.writeAfterRead()
+	err = u.writeAfterRead(ctx)
 	if err != nil {
 		return err
 	}
@@ -113,8 +114,8 @@ func (u *User) Create(name, email, password string, isAdmin bool, access []strin
 }
 
 // read reads the session data from the store and creates entries.
-func (u *User) read() error {
-	data, err := u.store.Read()
+func (u *User) read(ctx context.Context) error {
+	data, err := u.store.Read(ctx)
 	if err != nil {
 		return fmt.Errorf("error reading file: %w", err)
 	}
@@ -130,8 +131,8 @@ func (u *User) read() error {
 // readForWrite reads the session data from the store and creates entries.
 // IMPORTANT!!! Do not forget to unlock the store after writing!
 // Note: This function assumes that the store is NOT locked!
-func (u *User) readForWrite() error {
-	data, err := u.store.ReadForWrite()
+func (u *User) readForWrite(ctx context.Context) error {
+	data, err := u.store.ReadForWrite(ctx)
 	if err != nil {
 		return fmt.Errorf("error reading file: %w", err)
 	}
@@ -146,13 +147,13 @@ func (u *User) readForWrite() error {
 
 // writeAfterRead writes the current session data to the store.
 // Note: This function assumes that the store is locked.
-func (u *User) writeAfterRead() error {
+func (u *User) writeAfterRead(ctx context.Context) error {
 	data, err := u.getData()
 	if err != nil {
 		return fmt.Errorf("error getting data: %w", err)
 	}
 
-	err = u.store.WriteLocked(data)
+	err = u.store.WriteLocked(ctx, data)
 	if err != nil {
 		return fmt.Errorf("error storing data: %w", err)
 	}

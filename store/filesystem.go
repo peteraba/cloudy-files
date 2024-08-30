@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,7 +25,7 @@ func NewFileSystem(logger log.Logger, rootPath string) *FileSystem {
 
 // Write writes the given data to the file with the given name using the root path.
 // Subdirectory creation is not supported.
-func (fs *FileSystem) Write(name string, data []byte) error {
+func (fs *FileSystem) Write(_ context.Context, name string, data []byte) error {
 	fs.logger.Debug().Msg("writing file: " + name)
 
 	err := os.WriteFile(filepath.Join(fs.root, name), data, defaultPermissions)
@@ -36,7 +37,7 @@ func (fs *FileSystem) Write(name string, data []byte) error {
 }
 
 // Read reads the file with the given name using the root path.
-func (fs *FileSystem) Read(name string) ([]byte, error) {
+func (fs *FileSystem) Read(_ context.Context, name string) ([]byte, error) {
 	fs.logger.Debug().Msg("reading file: " + name)
 
 	data, err := os.ReadFile(filepath.Join(fs.root, name))

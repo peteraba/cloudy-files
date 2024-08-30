@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/phuslu/log"
@@ -24,13 +25,13 @@ func NewFile(repo FileRepo, store FileSystem, logger log.Logger) *File {
 }
 
 // Upload uploads a file with the given name and content.
-func (f *File) Upload(name string, content []byte, access []string) error {
-	err := f.store.Write(name, content)
+func (f *File) Upload(ctx context.Context, name string, content []byte, access []string) error {
+	err := f.store.Write(ctx, name, content)
 	if err != nil {
 		return fmt.Errorf("error writing file: %w", err)
 	}
 
-	err = f.repo.Create(name, access)
+	err = f.repo.Create(ctx, name, access)
 	if err != nil {
 		return fmt.Errorf("error creating model: %w", err)
 	}
@@ -39,8 +40,8 @@ func (f *File) Upload(name string, content []byte, access []string) error {
 }
 
 // Retrieve retrieves the content of a file by name.
-func (f *File) Retrieve(name string, access []string) ([]byte, error) {
-	file, err := f.repo.Get(name)
+func (f *File) Retrieve(ctx context.Context, name string, access []string) ([]byte, error) {
+	file, err := f.repo.Get(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving model: %w", err)
 	}
@@ -49,7 +50,7 @@ func (f *File) Retrieve(name string, access []string) ([]byte, error) {
 		return nil, fmt.Errorf("access denied: %w", apperr.ErrAccessDenied)
 	}
 
-	data, err := f.store.Read(name)
+	data, err := f.store.Read(ctx, name)
 	if err != nil {
 		return nil, fmt.Errorf("error reading file: %w", err)
 	}

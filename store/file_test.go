@@ -1,6 +1,7 @@
 package store_test
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -25,7 +26,8 @@ func TestFile_Write_and_Read(t *testing.T) {
 		fileStore := store.NewFile(logger, fileName)
 
 		if data != nil {
-			err := fileStore.Write(data)
+			ctx := context.Background()
+			err := fileStore.Write(ctx, data)
 			require.NoError(t, err)
 		}
 
@@ -49,13 +51,14 @@ func TestFile_Write_and_Read(t *testing.T) {
 
 		// setup
 		sut := setup(t, dataFileName, stubData)
+		ctx := context.Background()
 
-		data, err := sut.ReadForWrite()
+		data, err := sut.ReadForWrite(ctx)
 		require.NoError(t, err)
 		require.Equal(t, stubData, data)
 
 		// execute
-		data, err = sut.Read()
+		data, err = sut.Read(ctx)
 		require.Error(t, err)
 
 		// assert
@@ -73,13 +76,14 @@ func TestFile_Write_and_Read(t *testing.T) {
 
 		// setup
 		sut := setup(t, dataFileName, stubData)
+		ctx := context.Background()
 
-		data, err := sut.ReadForWrite()
+		data, err := sut.ReadForWrite(ctx)
 		require.NoError(t, err)
 		require.Equal(t, stubData, data)
 
 		// execute
-		err = sut.Write(stubData)
+		err = sut.Write(ctx, stubData)
 		require.Error(t, err)
 
 		// assert
@@ -96,12 +100,13 @@ func TestFile_Write_and_Read(t *testing.T) {
 
 		// setup
 		sut := setup(t, dataFileName, nil)
+		ctx := context.Background()
 
 		// execute
-		err := sut.Write(stubData)
+		err := sut.Write(ctx, stubData)
 		require.NoError(t, err)
 
-		got, err := sut.Read()
+		got, err := sut.Read(ctx)
 		require.NoError(t, err)
 
 		// assert
@@ -118,11 +123,12 @@ func TestFile_Write_and_Read(t *testing.T) {
 
 		// setup
 		sut := setup(t, dataFileName, stubData)
+		ctx := context.Background()
 
 		channel := make(chan struct{})
 
 		f := func(ch chan struct{}) {
-			got, err := sut.Read()
+			got, err := sut.Read(ctx)
 			require.NoError(t, err)
 			require.Equal(t, stubData, got)
 
@@ -160,7 +166,8 @@ func TestFile_ReadForWrite_and_WriteLocked(t *testing.T) {
 		sut := store.NewFile(logger, fileName)
 
 		if data != nil {
-			err := sut.Write(data)
+			ctx := context.Background()
+			err := sut.Write(ctx, data)
 			require.NoError(t, err)
 		}
 
@@ -184,13 +191,14 @@ func TestFile_ReadForWrite_and_WriteLocked(t *testing.T) {
 
 		// setup
 		sut, _ := setup(t, dataFileName, stubData)
+		ctx := context.Background()
 
-		data, err := sut.ReadForWrite()
+		data, err := sut.ReadForWrite(ctx)
 		require.NoError(t, err)
 		require.Equal(t, stubData, data)
 
 		// execute
-		data, err = sut.ReadForWrite()
+		data, err = sut.ReadForWrite(ctx)
 		require.Error(t, err)
 
 		// assert
@@ -208,11 +216,12 @@ func TestFile_ReadForWrite_and_WriteLocked(t *testing.T) {
 
 		// setup
 		sut, _ := setup(t, dataFileName, stubData)
+		ctx := context.Background()
 
-		_, err := sut.ReadForWrite()
+		_, err := sut.ReadForWrite(ctx)
 		require.NoError(t, err)
 
-		err = sut.Unlock()
+		err = sut.Unlock(ctx)
 		require.NoError(t, err)
 
 		// assert
@@ -228,12 +237,13 @@ func TestFile_ReadForWrite_and_WriteLocked(t *testing.T) {
 
 		// setup
 		sut, _ := setup(t, dataFileName, stubData)
+		ctx := context.Background()
 
 		// execute
-		got, err := sut.ReadForWrite()
+		got, err := sut.ReadForWrite(ctx)
 		require.NoError(t, err)
 
-		err = sut.WriteLocked(stubData)
+		err = sut.WriteLocked(ctx, stubData)
 		require.NoError(t, err)
 
 		// assert
@@ -251,9 +261,10 @@ func TestFile_ReadForWrite_and_WriteLocked(t *testing.T) {
 
 		// setup
 		sut, _ := setup(t, dataFileName, stubData)
+		ctx := context.Background()
 
 		// execute
-		got, err := sut.ReadForWrite()
+		got, err := sut.ReadForWrite(ctx)
 		require.NoError(t, err)
 		require.Equal(t, stubData, got)
 
@@ -261,14 +272,14 @@ func TestFile_ReadForWrite_and_WriteLocked(t *testing.T) {
 
 		go func(ch chan error) {
 			// this will not be finished before WriteLocked call is finished
-			err2 := sut.Write(expected)
+			err2 := sut.Write(ctx, expected)
 
 			ch <- err2
 		}(channel)
 
 		time.Sleep(store.DefaultWaitTime)
 
-		err = sut.WriteLocked(stubData)
+		err = sut.WriteLocked(ctx, stubData)
 		require.NoError(t, err)
 
 		// Ensure that the async write attempt can finish
@@ -277,7 +288,7 @@ func TestFile_ReadForWrite_and_WriteLocked(t *testing.T) {
 		err = <-channel
 		require.NoError(t, err)
 
-		data, err := sut.Read()
+		data, err := sut.Read(ctx)
 		require.NoError(t, err)
 
 		// assert

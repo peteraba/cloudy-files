@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -36,7 +37,7 @@ func (a *App) HashPassword() {
 
 	userService := a.factory.CreateUserService()
 
-	hash, err := userService.HashPassword(password)
+	hash, err := userService.HashPassword(context.Background(), password)
 	if err != nil {
 		a.Exit("Failed to hash password", err)
 	}
@@ -55,7 +56,7 @@ func (a *App) Login() {
 
 	userService := a.factory.CreateUserService()
 
-	hash, err := userService.Login(userName, pass)
+	hash, err := userService.Login(context.Background(), userName, pass)
 	if err != nil {
 		a.Exit("Login failed", err)
 	}
@@ -74,7 +75,7 @@ func (a *App) CheckPassword() {
 
 	userService := a.factory.CreateUserService()
 
-	err := userService.CheckPassword(userName, pass)
+	err := userService.CheckPassword(context.Background(), userName, pass)
 	if err != nil {
 		a.Exit("Password does not match", err)
 	}
@@ -93,7 +94,7 @@ func (a *App) CheckPasswordHash() {
 
 	userService := a.factory.CreateUserService()
 
-	err := userService.CheckPasswordHash(password, hash)
+	err := userService.CheckPasswordHash(context.Background(), password, hash)
 	if err != nil {
 		a.Exit("Password does not match", err)
 	}
@@ -109,7 +110,7 @@ func (a *App) CheckSession() {
 
 	sessionService := a.factory.CreateSessionService()
 
-	ok, err := sessionService.Check(os.Args[2], os.Args[3])
+	ok, err := sessionService.Check(context.Background(), os.Args[2], os.Args[3])
 	if err != nil {
 		a.Exit("Session does not exist", err)
 	}
@@ -121,7 +122,7 @@ func (a *App) CheckSession() {
 func (a *App) CleanUp() {
 	sessionService := a.factory.CreateSessionService()
 
-	err := sessionService.CleanUp()
+	err := sessionService.CleanUp(context.Background())
 	if err != nil {
 		a.Exit("Session cleanup failed", err)
 	}
@@ -152,7 +153,7 @@ func (a *App) CreateUser() {
 		access = os.Args[6:]
 	}
 
-	err := userService.Create(name, email, password, isAdmin, access)
+	err := userService.Create(context.Background(), name, email, password, isAdmin, access)
 	if err != nil {
 		a.Exit("Session cleanup failed", err)
 	}
@@ -185,7 +186,7 @@ func (a *App) Upload() {
 
 	fileService := a.factory.CreateFileService()
 
-	err = fileService.Upload(stats.Name(), data, access)
+	err = fileService.Upload(context.Background(), stats.Name(), data, access)
 	if err != nil {
 		a.Exit("File could not be stored", err)
 	}
@@ -213,7 +214,7 @@ func (a *App) Size() {
 
 	fileService := a.factory.CreateFileService()
 
-	data, err := fileService.Retrieve(stats.Name(), access)
+	data, err := fileService.Retrieve(context.Background(), stats.Name(), access)
 	if err != nil {
 		a.Exit("File could not be read", err)
 	}

@@ -1,6 +1,7 @@
 package password
 
 import (
+	"context"
 	"fmt"
 
 	passwordValidator "github.com/wagslane/go-password-validator"
@@ -28,7 +29,7 @@ func NewCheckerWithEntropy(minimumEntropy float64) *Checker {
 const bcryptPasswordMaxLength = 72
 
 // IsOK checks if the password is strong enough and not in the pwned password database.
-func (p Checker) IsOK(password string) error {
+func (p Checker) IsOK(_ context.Context, password string) error {
 	// password length is checked as []byte to avoid issues with multibyte characters
 	if len([]byte(password)) > bcryptPasswordMaxLength {
 		return apperr.ErrPasswordTooLong

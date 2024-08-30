@@ -1,6 +1,7 @@
 package store_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -41,12 +42,13 @@ func TestFileSystem_Write_and_Read(t *testing.T) {
 
 		// setup
 		sut := setup(t, gofakeit.UUID())
+		ctx := context.Background()
 
 		// execute
-		err := sut.Write(stubFileName, stubData)
+		err := sut.Write(ctx, stubFileName, stubData)
 		require.NoError(t, err)
 
-		data, err := sut.Read(stubFileName)
+		data, err := sut.Read(ctx, stubFileName)
 		require.NoError(t, err)
 
 		// assert

@@ -1,6 +1,7 @@
 package password_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -11,6 +12,8 @@ import (
 )
 
 func FuzzBcrypt(f *testing.F) {
+	ctx := context.Background()
+
 	testCases := []string{
 		"password",
 		"97TZPRZFGZFX9g",
@@ -28,16 +31,18 @@ func FuzzBcrypt(f *testing.F) {
 			orig = string([]byte(orig)[:72])
 		}
 
-		hash, err := sut.Hash(orig)
+		hash, err := sut.Hash(ctx, orig)
 		require.NoError(t, err)
 
-		err = sut.Check(orig, hash)
+		err = sut.Check(ctx, orig, hash)
 		require.NoError(t, err)
 	})
 }
 
 func TestBcrypt_Hash(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	t.Run("fail to hash too long password", func(t *testing.T) {
 		t.Parallel()
@@ -48,7 +53,7 @@ func TestBcrypt_Hash(t *testing.T) {
 		sut := password.NewBcryptHasher()
 
 		// execute
-		_, err := sut.Hash(stubPassword)
+		_, err := sut.Hash(ctx, stubPassword)
 		require.Error(t, err)
 
 		// assert
@@ -64,17 +69,19 @@ func TestBcrypt_Hash(t *testing.T) {
 		sut := password.NewBcryptHasher()
 
 		// execute
-		hash, err := sut.Hash(stubPassword)
+		hash, err := sut.Hash(ctx, stubPassword)
 		require.NoError(t, err)
 
 		// assert
 		assert.NotEmpty(t, hash)
-		assert.NoError(t, sut.Check(stubPassword, hash))
+		assert.NoError(t, sut.Check(ctx, stubPassword, hash))
 	})
 }
 
 func TestBcrypt_Check(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	t.Run("password is incorrect", func(t *testing.T) {
 		t.Parallel()
@@ -87,7 +94,7 @@ func TestBcrypt_Check(t *testing.T) {
 		sut := password.NewBcryptHasher()
 
 		// execute
-		err := sut.Check(stubPassword, stubHash)
+		err := sut.Check(ctx, stubPassword, stubHash)
 		require.Error(t, err)
 
 		// assert

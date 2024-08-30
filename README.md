@@ -1,6 +1,7 @@
 # cloudy-files
 
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/b9540be307fd4fbbbd9fa2018ba43ff5)](https://app.codacy.com/gh/peteraba/cloudy-files/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
+[![Coverage Status](https://coveralls.io/repos/github/peteraba/cloudy-files/badge.svg?branch=main)](https://coveralls.io/github/peteraba/cloudy-files?branch=main)
 
 Cheap, cloud-based file management
 

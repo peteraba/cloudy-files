@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v7"
@@ -18,6 +19,7 @@ func TestFile_Upload(t *testing.T) {
 	t.Parallel()
 
 	unusedSpy := util.NewSpy()
+	ctx := context.Background()
 
 	setup := func(t *testing.T, fileStoreSpy, fsStoreSpy *util.Spy) *service.File {
 		t.Helper()
@@ -46,7 +48,7 @@ func TestFile_Upload(t *testing.T) {
 		sut := setup(t, unusedSpy, fsStoreSpy)
 
 		// execute
-		err := sut.Upload(stubFileName, []byte{}, []string{})
+		err := sut.Upload(ctx, stubFileName, []byte{}, []string{})
 		require.Error(t, err)
 
 		// assert
@@ -63,7 +65,7 @@ func TestFile_Upload(t *testing.T) {
 		sut := setup(t, fileStoreSpy, unusedSpy)
 
 		// execute
-		err := sut.Upload("foo", []byte{}, []string{})
+		err := sut.Upload(ctx, "foo", []byte{}, []string{})
 		require.Error(t, err)
 
 		// assert
@@ -75,6 +77,7 @@ func TestFile_Retrieve(t *testing.T) {
 	t.Parallel()
 
 	unusedSpy := util.NewSpy()
+	ctx := context.Background()
 
 	setup := func(t *testing.T, fileStoreSpy, fsStoreSpy *util.Spy, fileStoreData []byte) *service.File {
 		t.Helper()
@@ -82,7 +85,7 @@ func TestFile_Retrieve(t *testing.T) {
 		fsStore := store.NewInMemoryFileSystem(fsStoreSpy)
 
 		fileStore := store.NewInMemoryFile(fileStoreSpy)
-		err := fileStore.Write(fileStoreData)
+		err := fileStore.Write(ctx, fileStoreData)
 		require.NoError(t, err)
 
 		factory := compose.NewFactory()
@@ -103,7 +106,7 @@ func TestFile_Retrieve(t *testing.T) {
 		sut := setup(t, fileStoreSpy, unusedSpy, nil)
 
 		// execute
-		data, err := sut.Retrieve("foo", []string{})
+		data, err := sut.Retrieve(ctx, "foo", []string{})
 		require.Error(t, err)
 		require.Nil(t, data)
 
@@ -121,7 +124,7 @@ func TestFile_Retrieve(t *testing.T) {
 		sut := setup(t, unusedSpy, unusedSpy, []byte("invalid json"))
 
 		// execute
-		data, err := sut.Retrieve(stubFileName, []string{})
+		data, err := sut.Retrieve(ctx, stubFileName, []string{})
 		require.Error(t, err)
 		require.Nil(t, data)
 
@@ -140,7 +143,7 @@ func TestFile_Retrieve(t *testing.T) {
 		sut := setup(t, unusedSpy, unusedSpy, []byte("{}"))
 
 		// execute
-		data, err := sut.Retrieve(stubFileName, stubAccess)
+		data, err := sut.Retrieve(ctx, stubFileName, stubAccess)
 		require.Error(t, err)
 		require.Nil(t, data)
 
@@ -161,7 +164,7 @@ func TestFile_Retrieve(t *testing.T) {
 		sut := setup(t, unusedSpy, fsStoreSpy, []byte(`{"foo.txt":{"name":"foo.txt","access":["foobar"]}}`))
 
 		// execute
-		data, err := sut.Retrieve(stubFileName, stubAccess)
+		data, err := sut.Retrieve(ctx, stubFileName, stubAccess)
 		require.Error(t, err)
 		require.Nil(t, data)
 
@@ -174,6 +177,7 @@ func TestFile_Upload_and_Retrieve(t *testing.T) {
 	t.Parallel()
 
 	unusedSpy := util.NewSpy()
+	ctx := context.Background()
 
 	setup := func(t *testing.T, fileStoreSpy, fsStoreSpy *util.Spy, fileStoreData []byte) *service.File {
 		t.Helper()
@@ -181,7 +185,7 @@ func TestFile_Upload_and_Retrieve(t *testing.T) {
 		fsStore := store.NewInMemoryFileSystem(fsStoreSpy)
 
 		fileStore := store.NewInMemoryFile(fileStoreSpy)
-		err := fileStore.Write(fileStoreData)
+		err := fileStore.Write(ctx, fileStoreData)
 		require.NoError(t, err)
 
 		factory := compose.NewFactory()
@@ -204,10 +208,10 @@ func TestFile_Upload_and_Retrieve(t *testing.T) {
 		sut := setup(t, unusedSpy, unusedSpy, nil)
 
 		// execute
-		err := sut.Upload(stubFileName, []byte(stubData), stubAccess)
+		err := sut.Upload(ctx, stubFileName, []byte(stubData), stubAccess)
 		require.NoError(t, err)
 
-		data, err := sut.Retrieve(stubFileName, []string{})
+		data, err := sut.Retrieve(ctx, stubFileName, []string{})
 		require.Error(t, err)
 
 		// assert
@@ -227,13 +231,13 @@ func TestFile_Upload_and_Retrieve(t *testing.T) {
 		sut := setup(t, unusedSpy, unusedSpy, nil)
 
 		// execute
-		err := sut.Upload(stubFileName, []byte(stubData), stubAccess)
+		err := sut.Upload(ctx, stubFileName, []byte(stubData), stubAccess)
 		require.NoError(t, err)
 
-		data, err := sut.Retrieve(stubFileName, stubAccess)
+		data, err := sut.Retrieve(ctx, stubFileName, stubAccess)
 		require.NoError(t, err)
 
-		data2, err := sut.Retrieve(stubFileName, stubAccess)
+		data2, err := sut.Retrieve(ctx, stubFileName, stubAccess)
 		require.NoError(t, err)
 
 		// assert
@@ -254,13 +258,13 @@ func TestFile_Upload_and_Retrieve(t *testing.T) {
 		sut := setup(t, unusedSpy, unusedSpy, nil)
 
 		// execute
-		err := sut.Upload(stubFileName, []byte(stubData), stubAccess)
+		err := sut.Upload(ctx, stubFileName, []byte(stubData), stubAccess)
 		require.NoError(t, err)
 
-		err = sut.Upload(stubFileName, []byte(stubData2), stubAccess)
+		err = sut.Upload(ctx, stubFileName, []byte(stubData2), stubAccess)
 		require.NoError(t, err)
 
-		data2, err := sut.Retrieve(stubFileName, stubAccess)
+		data2, err := sut.Retrieve(ctx, stubFileName, stubAccess)
 		require.NoError(t, err)
 
 		// assert

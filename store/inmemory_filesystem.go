@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -23,7 +24,7 @@ func NewInMemoryFileSystem(spy *util.Spy) *InMemoryFileSystem {
 }
 
 // Write writes data to memory.
-func (imfs *InMemoryFileSystem) Write(name string, data []byte) error {
+func (imfs *InMemoryFileSystem) Write(_ context.Context, name string, data []byte) error {
 	imfs.m.Lock()
 	defer imfs.m.Unlock()
 
@@ -37,7 +38,7 @@ func (imfs *InMemoryFileSystem) Write(name string, data []byte) error {
 }
 
 // Read returns data previously written.
-func (imfs *InMemoryFileSystem) Read(name string) ([]byte, error) {
+func (imfs *InMemoryFileSystem) Read(_ context.Context, name string) ([]byte, error) {
 	imfs.m.RLock()
 	defer imfs.m.RUnlock()
 

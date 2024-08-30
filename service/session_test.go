@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v7"
@@ -17,6 +18,7 @@ func TestSession_Check(t *testing.T) {
 	t.Parallel()
 
 	unusedSpy := util.NewSpy()
+	ctx := context.Background()
 
 	setup := func(t *testing.T, sessionStoreSpy, userStoreSpy *util.Spy) (*service.Session, *service.User) {
 		t.Helper()
@@ -43,7 +45,7 @@ func TestSession_Check(t *testing.T) {
 		sut, _ := setup(t, sessionStoreSpy, unusedSpy)
 
 		// execute
-		result, err := sut.Check(stubPassword, stubHash)
+		result, err := sut.Check(ctx, stubPassword, stubHash)
 		require.Error(t, err)
 
 		// assert
@@ -64,11 +66,11 @@ func TestSession_Check(t *testing.T) {
 		// setup
 		sut, userService := setup(t, unusedSpy, unusedSpy)
 
-		err := userService.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+		err := userService.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
 
 		// execute
-		exists, err := sut.Check(stubName, stubHash)
+		exists, err := sut.Check(ctx, stubName, stubHash)
 
 		// assert
 		require.NoError(t, err)
@@ -87,15 +89,15 @@ func TestSession_Check(t *testing.T) {
 		// setup
 		sut, userService := setup(t, unusedSpy, unusedSpy)
 
-		err := userService.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+		err := userService.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
 
-		sessionHash, err := userService.Login(stubName, stubPassword)
+		sessionHash, err := userService.Login(ctx, stubName, stubPassword)
 		require.NoError(t, err)
 		require.NotEmpty(t, sessionHash)
 
 		// execute
-		exists, err := sut.Check(stubName, sessionHash)
+		exists, err := sut.Check(ctx, stubName, sessionHash)
 
 		// assert
 		require.NoError(t, err)
@@ -107,12 +109,13 @@ func TestSession_CleanUp(t *testing.T) {
 	t.Parallel()
 
 	unusedSpy := util.NewSpy()
+	ctx := context.Background()
 
 	setup := func(t *testing.T, sessionStoreSpy *util.Spy, sessionData []byte) *service.Session {
 		t.Helper()
 
 		sessionStore := store.NewInMemoryFile(sessionStoreSpy)
-		err := sessionStore.Write(sessionData)
+		err := sessionStore.Write(ctx, sessionData)
 		require.NoError(t, err)
 
 		factory := compose.NewFactory()
@@ -134,7 +137,7 @@ func TestSession_CleanUp(t *testing.T) {
 		sut := setup(t, sessionStoreSpy, nil)
 
 		// execute
-		err := sut.CleanUp()
+		err := sut.CleanUp(ctx)
 		require.Error(t, err)
 
 		// assert
@@ -150,7 +153,7 @@ func TestSession_CleanUp(t *testing.T) {
 		sut := setup(t, unusedSpy, storeData)
 
 		// execute
-		err := sut.CleanUp()
+		err := sut.CleanUp(ctx)
 
 		// assert
 		require.NoError(t, err)

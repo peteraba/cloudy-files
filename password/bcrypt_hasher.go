@@ -1,6 +1,7 @@
 package password
 
 import (
+	"context"
 	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
@@ -21,7 +22,7 @@ func NewBcryptWithCost(cost int) *BcryptHasher {
 }
 
 // Hash returns the bcrypt hash of the password.
-func (b BcryptHasher) Hash(password string) (string, error) {
+func (b BcryptHasher) Hash(_ context.Context, password string) (string, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), b.cost)
 	if err != nil {
 		return "", fmt.Errorf("failed to hash password: %w", err)
@@ -31,7 +32,7 @@ func (b BcryptHasher) Hash(password string) (string, error) {
 }
 
 // Check checks if the provided password is correct or not.
-func (b BcryptHasher) Check(password, hashedPassword string) error {
+func (b BcryptHasher) Check(_ context.Context, password, hashedPassword string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 	if err != nil {
 		return fmt.Errorf("password is incorrect: %w", err)

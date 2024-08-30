@@ -1,33 +1,38 @@
 package service
 
-import "github.com/peteraba/cloudy-files/repo"
+import (
+	"context"
+
+	"github.com/peteraba/cloudy-files/repo"
+)
 
 type UserRepo interface {
-	Get(name string) (repo.UserModel, error)
-	Create(name, email, password string, isAdmin bool, access []string) error
+	Get(ctx context.Context, name string) (repo.UserModel, error)
+	Create(ctx context.Context, name, email, password string, isAdmin bool, access []string) error
 }
 
 type SessionRepo interface {
-	Check(name, hash string) (bool, error)
-	Start(name string) (string, error)
-	CleanUp() error
+	Get(ctx context.Context, name, hash string) (repo.SessionModel, error)
+	Check(ctx context.Context, name, hash string) (bool, error)
+	Start(ctx context.Context, name string, isAdmin bool, access []string) (string, error)
+	CleanUp(ctx context.Context) error
 }
 
 type PasswordHasher interface {
-	Check(password, hashedPassword string) error
-	Hash(password string) (string, error)
+	Check(ctx context.Context, password, hashedPassword string) error
+	Hash(ctx context.Context, password string) (string, error)
 }
 
 type PasswordChecker interface {
-	IsOK(password string) error
+	IsOK(ctx context.Context, password string) error
 }
 
 type FileSystem interface {
-	Write(name string, data []byte) error
-	Read(name string) ([]byte, error)
+	Write(ctx context.Context, name string, data []byte) error
+	Read(ctx context.Context, name string) ([]byte, error)
 }
 
 type FileRepo interface {
-	Get(name string) (repo.FileModel, error)
-	Create(name string, access []string) error
+	Get(ctx context.Context, name string) (repo.FileModel, error)
+	Create(ctx context.Context, name string, access []string) error
 }

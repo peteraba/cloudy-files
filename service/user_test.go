@@ -1,6 +1,7 @@
 package service_test
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -20,16 +21,17 @@ func TestUser_Create_and_Login(t *testing.T) {
 	t.Parallel()
 
 	unusedSpy := util.NewSpy() // DO NOT USE !!!
+	ctx := context.Background()
 
 	setup := func(t *testing.T, userStoreSpy, sessionStoreSpy *util.Spy, userData, sessionData []byte) *service.User {
 		t.Helper()
 
 		userStore := store.NewInMemoryFile(userStoreSpy)
-		err := userStore.Write(userData)
+		err := userStore.Write(ctx, userData)
 		require.NoError(t, err)
 
 		sessionStore := store.NewInMemoryFile(sessionStoreSpy)
-		err = sessionStore.Write(sessionData)
+		err = sessionStore.Write(ctx, sessionData)
 		require.NoError(t, err)
 
 		factory := compose.NewFactory()
@@ -53,7 +55,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		sut := setup(t, unusedSpy, unusedSpy, []byte("invalid json"), nil)
 
 		// execute
-		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.Error(t, err)
 
 		// assert
@@ -73,7 +75,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 
 		// execute
-		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.Error(t, err)
 
 		// assert
@@ -95,7 +97,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		sut := setup(t, userStoreSpy, unusedSpy, nil, nil)
 
 		// execute
-		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.Error(t, err)
 
 		// assert
@@ -115,7 +117,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		sut := setup(t, unusedSpy, unusedSpy, []byte("invalid json"), nil)
 
 		// execute
-		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.Error(t, err)
 
 		// assert
@@ -134,16 +136,16 @@ func TestUser_Create_and_Login(t *testing.T) {
 		// setup
 		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 
-		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
 
 		// extra
 		wrongPassword := stubPassword + " "
-		err = sut.CheckPassword(stubName, wrongPassword)
+		err = sut.CheckPassword(ctx, stubName, wrongPassword)
 		require.Error(t, err)
 
 		// execute
-		sessionHash, err := sut.Login(stubName, wrongPassword)
+		sessionHash, err := sut.Login(ctx, stubName, wrongPassword)
 		require.Error(t, err)
 		require.Empty(t, sessionHash)
 
@@ -162,7 +164,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 
 		// execute
-		hash, err := sut.Login(stubName, stubPassword)
+		hash, err := sut.Login(ctx, stubName, stubPassword)
 		require.Error(t, err)
 		require.Empty(t, hash)
 
@@ -182,11 +184,11 @@ func TestUser_Create_and_Login(t *testing.T) {
 		// setup
 		sut := setup(t, unusedSpy, unusedSpy, nil, []byte("invalid json"))
 
-		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
 
 		// execute
-		hash, err := sut.Login(stubName, stubPassword)
+		hash, err := sut.Login(ctx, stubName, stubPassword)
 		require.Error(t, err)
 		require.Empty(t, hash)
 
@@ -206,15 +208,15 @@ func TestUser_Create_and_Login(t *testing.T) {
 		// setup
 		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 
-		err := sut.Create(stubName, stubEmail, stubPassword, false, stubAccess)
+		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
 
 		// extra
-		err = sut.CheckPassword(stubName, stubPassword)
+		err = sut.CheckPassword(ctx, stubName, stubPassword)
 		require.NoError(t, err)
 
 		// execute
-		sessionHash, err := sut.Login(stubName, stubPassword)
+		sessionHash, err := sut.Login(ctx, stubName, stubPassword)
 		require.NoError(t, err)
 
 		// assert
@@ -232,15 +234,15 @@ func TestUser_Create_and_Login(t *testing.T) {
 		// setup
 		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 
-		err := sut.Create(stubName, stubEmail, stubPassword, true, []string{})
+		err := sut.Create(ctx, stubName, stubEmail, stubPassword, true, []string{})
 		require.NoError(t, err)
 
 		// extra
-		err = sut.CheckPassword(stubName, stubPassword)
+		err = sut.CheckPassword(ctx, stubName, stubPassword)
 		require.NoError(t, err)
 
 		// execute
-		sessionHash, err := sut.Login(stubName, stubPassword)
+		sessionHash, err := sut.Login(ctx, stubName, stubPassword)
 		require.NoError(t, err)
 
 		// assert
@@ -255,23 +257,24 @@ func TestUser_Create_and_Login(t *testing.T) {
 
 		// setup
 		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
-		passwordHash, err := sut.HashPassword(stubPassword)
+		passwordHash, err := sut.HashPassword(ctx, stubPassword)
 		require.NoError(t, err)
 
 		// execute
-		err = sut.CheckPasswordHash(stubPassword, passwordHash)
+		err = sut.CheckPasswordHash(ctx, stubPassword, passwordHash)
 		require.NoError(t, err)
 	})
 }
 
 func TestUser_CheckPassword(t *testing.T) {
 	t.Parallel()
+	ctx := context.Background()
 
 	setup := func(t *testing.T, userStoreSpy *util.Spy, userData []byte) *service.User {
 		t.Helper()
 
 		userStore := store.NewInMemoryFile(userStoreSpy)
-		err := userStore.Write(userData)
+		err := userStore.Write(ctx, userData)
 		require.NoError(t, err)
 
 		factory := compose.NewFactory()
@@ -294,7 +297,7 @@ func TestUser_CheckPassword(t *testing.T) {
 		sut := setup(t, userStoreSpy, nil)
 
 		// execute
-		err := sut.CheckPassword(stubName, stubPassword)
+		err := sut.CheckPassword(ctx, stubName, stubPassword)
 		require.Error(t, err)
 
 		// assert
@@ -306,6 +309,7 @@ func TestUser_HashPassword(t *testing.T) {
 	t.Parallel()
 
 	unusedSpy := util.NewSpy() // DO NOT USE !!!
+	ctx := context.Background()
 
 	setup := func(t *testing.T, hasherSpy *util.Spy) *service.User {
 		t.Helper()
@@ -328,7 +332,7 @@ func TestUser_HashPassword(t *testing.T) {
 		sut := setup(t, unusedSpy)
 
 		// execute
-		hash, err := sut.HashPassword(stubPassword)
+		hash, err := sut.HashPassword(ctx, stubPassword)
 		require.Error(t, err)
 
 		// assert
@@ -348,7 +352,7 @@ func TestUser_HashPassword(t *testing.T) {
 		sut := setup(t, hasherSpy)
 
 		// execute
-		hash, err := sut.HashPassword(stubPassword)
+		hash, err := sut.HashPassword(ctx, stubPassword)
 		require.Error(t, err)
 
 		// assert
@@ -359,6 +363,8 @@ func TestUser_HashPassword(t *testing.T) {
 
 func TestUser_CheckPasswordHash(t *testing.T) {
 	t.Parallel()
+
+	ctx := context.Background()
 
 	setup := func(t *testing.T, hasherSpy *util.Spy) *service.User {
 		t.Helper()
@@ -384,7 +390,7 @@ func TestUser_CheckPasswordHash(t *testing.T) {
 		sut := setup(t, hasherSpy)
 
 		// execute
-		err := sut.CheckPasswordHash(stubPassword, stubHash)
+		err := sut.CheckPasswordHash(ctx, stubPassword, stubHash)
 		require.Error(t, err)
 
 		// assert
