@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -18,7 +17,7 @@ import (
 // S3 is a store that uses AWS S3 to store and retrieve data.
 type S3 struct {
 	client     *s3.Client
-	logger     log.Logger
+	logger     *log.Logger
 	bucket     string
 	key        string
 	lockKey    string
@@ -26,7 +25,7 @@ type S3 struct {
 }
 
 // NewS3 creates a new S3 instance.
-func NewS3(client *s3.Client, logger log.Logger, bucket, path string) *S3 {
+func NewS3(client *s3.Client, logger *log.Logger, bucket, path string) *S3 {
 	return &S3{
 		client:     client,
 		logger:     logger,
@@ -48,7 +47,7 @@ func (s *S3) Read(ctx context.Context) ([]byte, error) {
 	// Reading the file (without locking)
 	s.logger.Debug().Str("bucket", s.bucket).Str("key", s.key).Msg("reading file")
 
-	data, err := os.ReadFile(s.key)
+	data, err := s.read(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error reading file: %w", err)
 	}
@@ -108,9 +107,6 @@ func (s *S3) Write(ctx context.Context, data []byte) error {
 
 // WriteLocked writes the data to S3 and then unlocks it.
 func (s *S3) WriteLocked(ctx context.Context, data []byte) error {
-	// Checking if the lock file exists
-	_, err := os.Stat(s.lockKey)
-
 	// Unexpected error
 	exists, err := s.lockExists(ctx)
 	if err != nil {
@@ -178,6 +174,8 @@ func (s *S3) lock(ctx context.Context) error {
 		return fmt.Errorf("error creating lock file: %s, err: %w", s.lockKey, err)
 	}
 
+	s.logger.Debug().Str("bucket", s.bucket).Str("lockKey", s.lockKey).Msg("lock acquired")
+
 	return nil
 }
 
@@ -234,7 +232,7 @@ func (s *S3) lockExists(ctx context.Context) (bool, error) {
 			return false, nil
 		}
 
-		return false, fmt.Errorf("unable to check if object exists, err: %w, debug: %#v", err, err)
+		return false, fmt.Errorf("unable to check if object exists, err: %w", err)
 	}
 
 	return true, nil

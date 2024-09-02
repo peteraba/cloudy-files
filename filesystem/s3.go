@@ -13,12 +13,12 @@ import (
 // S3 can store and retrieve any file from an S3 bucket.
 type S3 struct {
 	client *s3.Client
-	logger log.Logger
+	logger *log.Logger
 	bucket string
 }
 
 // NewS3 creates a new S3 instance.
-func NewS3(client *s3.Client, logger log.Logger, bucket string) *S3 {
+func NewS3(client *s3.Client, logger *log.Logger, bucket string) *S3 {
 	return &S3{
 		client: client,
 		logger: logger,

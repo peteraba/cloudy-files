@@ -159,7 +159,7 @@ func TestLocal_Write_and_Read(t *testing.T) {
 func TestLocal_ReadForWrite_and_WriteLocked(t *testing.T) {
 	t.Parallel()
 
-	setup := func(t *testing.T, fileName string, data []byte) (*store.Local, log.Logger) { //nolint:unparam // it makes debugging easier if needed
+	setup := func(t *testing.T, fileName string, data []byte) (*store.Local, *log.Logger) { //nolint:unparam // it makes debugging easier if needed
 		t.Helper()
 
 		factory := compose.NewTestFactory(appconfig.NewConfig())

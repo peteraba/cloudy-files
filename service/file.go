@@ -27,12 +27,14 @@ func NewFile(repo FileRepo, store FileSystem, logger log.Logger) *File {
 // Upload uploads a file with the given name and content.
 func (f *File) Upload(ctx context.Context, name string, content []byte, access []string) error {
 	f.logger.Info().Str("name", name).Msg("uploading file")
+
 	err := f.store.Write(ctx, name, content)
 	if err != nil {
 		return fmt.Errorf("error writing file: %w", err)
 	}
 
 	f.logger.Info().Str("name", name).Msg("updating file DB")
+
 	err = f.repo.Create(ctx, name, access)
 	if err != nil {
 		return fmt.Errorf("error creating model: %w", err)

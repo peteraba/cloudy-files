@@ -59,7 +59,7 @@ func NewFactory(appConfig *appconfig.Config) *Factory {
 func NewTestFactory(appConfig *appconfig.Config) *Factory {
 	f := NewFactory(appConfig)
 
-	f.logger.Level = log.PanicLevel
+	f.SetLogLevel(log.PanicLevel)
 
 	return f
 }
@@ -69,6 +69,21 @@ func (f *Factory) SetAWS(awsConfig aws.Config) *Factory { //nolint:gocritic // a
 	f.s3Client = s3.NewFromConfig(awsConfig)
 
 	return f
+}
+
+func (f *Factory) SetLogLevel(level log.Level) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	f.logger = &log.Logger{
+		Level:        level,
+		Caller:       0,
+		TimeField:    "",
+		TimeFormat:   "",
+		TimeLocation: nil,
+		Context:      nil,
+		Writer:       log.IOWriter{Writer: os.Stderr},
+	}
 }
 
 // GetS3Client returns the S3 client.
@@ -119,7 +134,7 @@ func (f *Factory) getFileSystem() service.FileSystem {
 
 func (f *Factory) createFileSystem() {
 	if f.s3Client != nil {
-		f.fileSystemInstance = filesystem.NewS3(f.s3Client, *f.logger, f.appConfig.FileSystemAwsBucket)
+		f.fileSystemInstance = filesystem.NewS3(f.s3Client, f.logger, f.appConfig.FileSystemAwsBucket)
 
 		return
 	}
@@ -129,7 +144,7 @@ func (f *Factory) createFileSystem() {
 		panic(err)
 	}
 
-	f.fileSystemInstance = filesystem.NewLocal(*f.logger, filepath.Join(workDir, f.appConfig.FileSystemLocalPath))
+	f.fileSystemInstance = filesystem.NewLocal(f.logger, filepath.Join(workDir, f.appConfig.FileSystemLocalPath))
 }
 
 // SetFileSystem sets the file system for the factory.
@@ -153,7 +168,7 @@ func (f *Factory) getStore(dataType DataType) repo.Store {
 
 func (f *Factory) createStore(dataType DataType) repo.Store {
 	if f.s3Client != nil {
-		return store.NewS3(f.s3Client, *f.logger, f.appConfig.StoreAwsBucket, filePaths[dataType])
+		return store.NewS3(f.s3Client, f.logger, f.appConfig.StoreAwsBucket, filePaths[dataType])
 	}
 
 	workDir, err := os.Getwd()
@@ -161,7 +176,7 @@ func (f *Factory) createStore(dataType DataType) repo.Store {
 		panic(err)
 	}
 
-	return store.NewLocal(*f.logger, filepath.Join(workDir, f.appConfig.StoreLocalPath, filePaths[dataType]))
+	return store.NewLocal(f.logger, filepath.Join(workDir, f.appConfig.StoreLocalPath, filePaths[dataType]))
 }
 
 // SetStore sets the store for the factory.
@@ -208,17 +223,17 @@ func (f *Factory) createRawPasswordChecker() *password.Checker {
 }
 
 // GetLogger returns the logger.
-func (f *Factory) GetLogger() log.Logger {
+func (f *Factory) GetLogger() *log.Logger {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
 
-	return *f.logger
+	return f.logger
 }
 
 // SetLogger sets the logger for the factory.
-func (f *Factory) SetLogger(logger log.Logger) {
+func (f *Factory) SetLogger(logger *log.Logger) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
-	f.logger = &logger
+	f.logger = logger
 }

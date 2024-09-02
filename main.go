@@ -20,21 +20,9 @@ func main() {
 	start := time.Now()
 
 	ctx := context.Background()
-
 	factory := compose.NewFactory(appconfig.NewConfigFromFile())
-	logger := factory.GetLogger()
 
-	if os.Getenv(storeEnvKey) == storeTypeS3 {
-		cfg, err := awsConfig.LoadDefaultConfig(ctx)
-		if err != nil {
-			logger.Error().Err(err).Msg("unable to load SDK config")
-
-			os.Exit(1)
-		}
-
-		factory.SetAWS(cfg)
-		logger.Info().Msg("AWS SDK config loaded")
-	}
+	setupAws(ctx, factory)
 
 	cliApp := cli.NewApp(factory)
 
@@ -62,8 +50,24 @@ func main() {
 	case "size":
 		cliApp.Size()
 	default:
-		logger.Error().Str("command", os.Args[1]).Msg("Unknown command")
+		factory.GetLogger().Error().Str("command", os.Args[1]).Msg("Unknown command")
 	}
 
-	logger.Info().Dur("duration", time.Since(start)).Msg("Execution time")
+	factory.GetLogger().Info().Dur("duration", time.Since(start)).Msg("Execution time")
+}
+
+func setupAws(ctx context.Context, factory *compose.Factory) {
+	if os.Getenv(storeEnvKey) != storeTypeS3 {
+		return
+	}
+
+	cfg, err := awsConfig.LoadDefaultConfig(ctx)
+	if err != nil {
+		factory.GetLogger().Error().Err(err).Msg("unable to load SDK config")
+
+		os.Exit(1)
+	}
+
+	factory.SetAWS(cfg)
+	factory.GetLogger().Info().Msg("AWS SDK config loaded")
 }

@@ -13,14 +13,14 @@ import (
 
 // Local is a file-based Store implementation.
 type Local struct {
-	logger       log.Logger
+	logger       *log.Logger
 	fileName     string
 	lockFileName string
 	maxRetries   int
 }
 
 // NewLocal creates a new file instance.
-func NewLocal(logger log.Logger, fileName string) *Local {
+func NewLocal(logger *log.Logger, fileName string) *Local {
 	return &Local{
 		logger:       logger,
 		fileName:     fileName,
