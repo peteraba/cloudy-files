@@ -2,8 +2,6 @@ package store_test
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"testing"
 	"time"
 
@@ -173,9 +171,7 @@ func TestS3_ReadForWrite_and_WriteLocked(t *testing.T) {
 
 		awsConfig, err := config.LoadDefaultConfig(ctx)
 		if err != nil || awsConfig.BaseEndpoint == nil {
-			fmt.Printf("unable to load SDK appconfig: %v", err) //nolint:forbidigo // no need for logging here
-
-			os.Exit(1)
+			t.SkipNow()
 		}
 
 		factory := compose.NewTestFactory(appconfig.NewConfig()).SetAWS(awsConfig)

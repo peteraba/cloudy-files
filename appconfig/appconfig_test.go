@@ -1,6 +1,7 @@
 package appconfig_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,6 +14,11 @@ func TestNewConfig(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
+
+		_, err := os.Stat("./.env")
+		if os.IsNotExist(err) {
+			t.SkipNow()
+		}
 
 		// execute
 		cfg := appconfig.NewConfigFromFile("./.env")
