@@ -28,7 +28,7 @@ func TestS3_Write_and_Read(t *testing.T) {
 		const bucket = "cloudy-files-123-test"
 
 		awsConfig, err := config.LoadDefaultConfig(ctx)
-		if err != nil {
+		if err != nil || awsConfig.BaseEndpoint == nil {
 			t.SkipNow()
 		}
 
@@ -172,7 +172,7 @@ func TestS3_ReadForWrite_and_WriteLocked(t *testing.T) {
 		const bucket = "cloudy-files-123-test"
 
 		awsConfig, err := config.LoadDefaultConfig(ctx)
-		if err != nil {
+		if err != nil || awsConfig.BaseEndpoint == nil {
 			fmt.Printf("unable to load SDK appconfig: %v", err) //nolint:forbidigo // no need for logging here
 
 			os.Exit(1)
