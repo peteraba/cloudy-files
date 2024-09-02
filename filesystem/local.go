@@ -1,4 +1,4 @@
-package store
+package filesystem
 
 import (
 	"context"
@@ -9,23 +9,27 @@ import (
 	"github.com/phuslu/log"
 )
 
-// FileSystem can store and retrieve any file from a directory.
-type FileSystem struct {
+const (
+	defaultPermissions = 0o600
+)
+
+// Local can store and retrieve any file from a directory.
+type Local struct {
 	logger log.Logger
 	root   string
 }
 
-// NewFileSystem creates a new FileSystem instance.
-func NewFileSystem(logger log.Logger, rootPath string) *FileSystem {
-	return &FileSystem{
+// NewLocal creates a new Local instance.
+func NewLocal(logger log.Logger, rootPath string) *Local {
+	return &Local{
 		logger: logger,
 		root:   rootPath,
 	}
 }
 
-// Write writes the given data to the file with the given name using the root path.
+// Write writes the given data to the file with the given name using the bucket path.
 // Subdirectory creation is not supported.
-func (fs *FileSystem) Write(_ context.Context, name string, data []byte) error {
+func (fs *Local) Write(_ context.Context, name string, data []byte) error {
 	fs.logger.Debug().Msg("writing file: " + name)
 
 	err := os.WriteFile(filepath.Join(fs.root, name), data, defaultPermissions)
@@ -36,8 +40,8 @@ func (fs *FileSystem) Write(_ context.Context, name string, data []byte) error {
 	return nil
 }
 
-// Read reads the file with the given name using the root path.
-func (fs *FileSystem) Read(_ context.Context, name string) ([]byte, error) {
+// Read reads the file with the given name using the bucket path.
+func (fs *Local) Read(_ context.Context, name string) ([]byte, error) {
 	fs.logger.Debug().Msg("reading file: " + name)
 
 	data, err := os.ReadFile(filepath.Join(fs.root, name))

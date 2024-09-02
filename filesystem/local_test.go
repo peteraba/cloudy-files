@@ -1,4 +1,4 @@
-package store_test
+package filesystem_test
 
 import (
 	"context"
@@ -9,26 +9,27 @@ import (
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/stretchr/testify/require"
 
+	"github.com/peteraba/cloudy-files/appconfig"
 	"github.com/peteraba/cloudy-files/compose"
-	"github.com/peteraba/cloudy-files/store"
+	"github.com/peteraba/cloudy-files/filesystem"
 )
 
 const defaultFileMode = 0o755
 
-func TestFileSystem_Write_and_Read(t *testing.T) {
+func TestLocal_Write_and_Read(t *testing.T) {
 	t.Parallel()
 
-	setup := func(t *testing.T, path string) *store.FileSystem {
+	setup := func(t *testing.T, path string) *filesystem.Local {
 		t.Helper()
 
-		factory := compose.NewFactory()
+		factory := compose.NewTestFactory(appconfig.NewConfig())
 		logger := factory.GetLogger()
 
 		path = filepath.Join("/tmp", path)
 		err := os.MkdirAll(path, defaultFileMode)
 		require.NoError(t, err)
 
-		sut := store.NewFileSystem(logger, path)
+		sut := filesystem.NewLocal(logger, path)
 
 		return sut
 	}

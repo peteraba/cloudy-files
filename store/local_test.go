@@ -11,27 +11,28 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/peteraba/cloudy-files/appconfig"
 	"github.com/peteraba/cloudy-files/compose"
 	"github.com/peteraba/cloudy-files/store"
 )
 
-func TestFile_Write_and_Read(t *testing.T) {
+func TestLocal_Write_and_Read(t *testing.T) {
 	t.Parallel()
 
-	setup := func(t *testing.T, fileName string, data []byte) *store.File {
+	setup := func(t *testing.T, fileName string, data []byte) *store.Local {
 		t.Helper()
 
-		factory := compose.NewFactory()
+		factory := compose.NewTestFactory(appconfig.NewConfig())
 		logger := factory.GetLogger()
-		fileStore := store.NewFile(logger, fileName)
+		localStore := store.NewLocal(logger, fileName)
 
 		if data != nil {
 			ctx := context.Background()
-			err := fileStore.Write(ctx, data)
+			err := localStore.Write(ctx, data)
 			require.NoError(t, err)
 		}
 
-		return fileStore
+		return localStore
 	}
 
 	cleanUp := func(t *testing.T, fileName string) {
@@ -155,15 +156,15 @@ func TestFile_Write_and_Read(t *testing.T) {
 	})
 }
 
-func TestFile_ReadForWrite_and_WriteLocked(t *testing.T) {
+func TestLocal_ReadForWrite_and_WriteLocked(t *testing.T) {
 	t.Parallel()
 
-	setup := func(t *testing.T, fileName string, data []byte) (*store.File, log.Logger) { //nolint:unparam // it makes debugging easier if needed
+	setup := func(t *testing.T, fileName string, data []byte) (*store.Local, log.Logger) { //nolint:unparam // it makes debugging easier if needed
 		t.Helper()
 
-		factory := compose.NewFactory()
+		factory := compose.NewTestFactory(appconfig.NewConfig())
 		logger := factory.GetLogger()
-		sut := store.NewFile(logger, fileName)
+		sut := store.NewLocal(logger, fileName)
 
 		if data != nil {
 			ctx := context.Background()

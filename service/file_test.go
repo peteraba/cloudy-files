@@ -8,8 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/peteraba/cloudy-files/appconfig"
 	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/compose"
+	"github.com/peteraba/cloudy-files/filesystem"
 	"github.com/peteraba/cloudy-files/service"
 	"github.com/peteraba/cloudy-files/store"
 	"github.com/peteraba/cloudy-files/util"
@@ -24,13 +26,10 @@ func TestFile_Upload(t *testing.T) {
 	setup := func(t *testing.T, fileStoreSpy, fsStoreSpy *util.Spy) *service.File {
 		t.Helper()
 
-		fsStore := store.NewInMemoryFileSystem(fsStoreSpy)
-		fileStore := store.NewInMemoryFile(fileStoreSpy)
+		factory := compose.NewTestFactory(appconfig.NewConfig())
 
-		factory := compose.NewFactory()
-
-		factory.SetFileSystem(fsStore)
-		factory.SetFileStore(fileStore)
+		factory.SetFileSystem(filesystem.NewInMemory(fsStoreSpy))
+		factory.SetStore(store.NewInMemory(fileStoreSpy), compose.FileStore)
 
 		return factory.CreateFileService()
 	}
@@ -82,16 +81,19 @@ func TestFile_Retrieve(t *testing.T) {
 	setup := func(t *testing.T, fileStoreSpy, fsStoreSpy *util.Spy, fileStoreData []byte) *service.File {
 		t.Helper()
 
-		fsStore := store.NewInMemoryFileSystem(fsStoreSpy)
+		fsStore := filesystem.NewInMemory(fsStoreSpy)
 
-		fileStore := store.NewInMemoryFile(fileStoreSpy)
-		err := fileStore.Write(ctx, fileStoreData)
-		require.NoError(t, err)
+		fileStore := store.NewInMemory(fileStoreSpy)
 
-		factory := compose.NewFactory()
+		if fileStoreData != nil {
+			err := fileStore.Write(ctx, fileStoreData)
+			require.NoError(t, err)
+		}
+
+		factory := compose.NewTestFactory(appconfig.NewConfig())
 
 		factory.SetFileSystem(fsStore)
-		factory.SetFileStore(fileStore)
+		factory.SetStore(fileStore, compose.FileStore)
 
 		return factory.CreateFileService()
 	}
@@ -182,16 +184,16 @@ func TestFile_Upload_and_Retrieve(t *testing.T) {
 	setup := func(t *testing.T, fileStoreSpy, fsStoreSpy *util.Spy, fileStoreData []byte) *service.File {
 		t.Helper()
 
-		fsStore := store.NewInMemoryFileSystem(fsStoreSpy)
+		fsStore := filesystem.NewInMemory(fsStoreSpy)
 
-		fileStore := store.NewInMemoryFile(fileStoreSpy)
+		fileStore := store.NewInMemory(fileStoreSpy)
 		err := fileStore.Write(ctx, fileStoreData)
 		require.NoError(t, err)
 
-		factory := compose.NewFactory()
+		factory := compose.NewTestFactory(appconfig.NewConfig())
 
 		factory.SetFileSystem(fsStore)
-		factory.SetFileStore(fileStore)
+		factory.SetStore(fileStore, compose.FileStore)
 
 		return factory.CreateFileService()
 	}

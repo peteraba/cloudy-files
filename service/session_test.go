@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/peteraba/cloudy-files/appconfig"
 	"github.com/peteraba/cloudy-files/compose"
 	"github.com/peteraba/cloudy-files/service"
 	"github.com/peteraba/cloudy-files/store"
@@ -23,10 +24,10 @@ func TestSession_Check(t *testing.T) {
 	setup := func(t *testing.T, sessionStoreSpy, userStoreSpy *util.Spy) (*service.Session, *service.User) {
 		t.Helper()
 
-		factory := compose.NewFactory()
+		factory := compose.NewTestFactory(appconfig.NewConfig())
 
-		factory.SetSessionStore(store.NewInMemoryFile(sessionStoreSpy))
-		factory.SetUserStore(store.NewInMemoryFile(userStoreSpy))
+		factory.SetStore(store.NewInMemory(sessionStoreSpy), compose.SessionStore)
+		factory.SetStore(store.NewInMemory(userStoreSpy), compose.UserStore)
 
 		return factory.CreateSessionService(), factory.CreateUserService()
 	}
@@ -114,13 +115,13 @@ func TestSession_CleanUp(t *testing.T) {
 	setup := func(t *testing.T, sessionStoreSpy *util.Spy, sessionData []byte) *service.Session {
 		t.Helper()
 
-		sessionStore := store.NewInMemoryFile(sessionStoreSpy)
+		sessionStore := store.NewInMemory(sessionStoreSpy)
 		err := sessionStore.Write(ctx, sessionData)
 		require.NoError(t, err)
 
-		factory := compose.NewFactory()
+		factory := compose.NewTestFactory(appconfig.NewConfig())
 
-		factory.SetSessionStore(sessionStore)
+		factory.SetStore(sessionStore, compose.SessionStore)
 
 		return factory.CreateSessionService()
 	}

@@ -5,80 +5,134 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/phuslu/log"
 
+	"github.com/peteraba/cloudy-files/appconfig"
+	"github.com/peteraba/cloudy-files/filesystem"
 	"github.com/peteraba/cloudy-files/password"
 	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/service"
 	"github.com/peteraba/cloudy-files/store"
 )
 
+// DataType represents the type of data stored in a store.
+type DataType int
+
+const (
+	// SessionStore represents a store for session data.
+	SessionStore DataType = iota
+	// UserStore represents a store for user data.
+	UserStore
+	// FileStore represents a store for file data.
+	FileStore
+)
+
+// Factory is a factory for creating services.
 type Factory struct {
-	mutex                  *sync.Mutex
+	mutex                  *sync.RWMutex
 	fileSystemInstance     service.FileSystem
-	fileStoreInstance      repo.Store
-	userStoreInstance      repo.Store
-	sessionStoreInstance   repo.Store
+	stores                 [3]repo.Store
 	passwordHasherInstance service.PasswordHasher
+	s3Client               *s3.Client
+	appConfig              *appconfig.Config
+	logger                 *log.Logger
 }
 
-func NewFactory() *Factory {
+var filePaths = [...]string{"sessions.json", "users.json", "files.json"} //nolint:gochecknoglobals // This is a constant
+
+// NewFactory creates a new factory.
+func NewFactory(appConfig *appconfig.Config) *Factory {
 	return &Factory{
-		mutex:                  &sync.Mutex{},
+		mutex:                  &sync.RWMutex{},
 		fileSystemInstance:     nil,
-		fileStoreInstance:      nil,
-		userStoreInstance:      nil,
-		sessionStoreInstance:   nil,
+		stores:                 [...]repo.Store{nil, nil, nil},
 		passwordHasherInstance: nil,
+		s3Client:               nil,
+		logger:                 &log.DefaultLogger,
+		appConfig:              appConfig,
 	}
 }
 
-func (f *Factory) CreateFileService() *service.File {
-	logger := f.GetLogger()
+// NewTestFactory creates a new factory for testing.
+func NewTestFactory(appConfig *appconfig.Config) *Factory {
+	f := NewFactory(appConfig)
 
-	fileStore := f.getFileStore(logger)
-	fileRepo := f.createFileRepo(fileStore)
+	f.logger.Level = log.PanicLevel
 
-	fsStore := f.getFileSystem(logger)
-
-	return service.NewFile(fileRepo, fsStore, logger)
+	return f
 }
 
-func (f *Factory) CreateUserService() *service.User {
-	logger := f.GetLogger()
+// SetAWS sets the AWS configuration for the factory.
+func (f *Factory) SetAWS(awsConfig aws.Config) *Factory { //nolint:gocritic // aws.Config might be huge (320 bytes, but it's a one-off)
+	f.s3Client = s3.NewFromConfig(awsConfig)
 
-	userStore := f.getUserStore(logger)
+	return f
+}
+
+// GetS3Client returns the S3 client.
+func (f *Factory) GetS3Client() *s3.Client {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+
+	return f.s3Client
+}
+
+// CreateFileService creates a file service.
+func (f *Factory) CreateFileService() *service.File {
+	fileStore := f.getStore(FileStore)
+	fileRepo := f.createFileRepo(fileStore)
+
+	fsStore := f.getFileSystem()
+
+	return service.NewFile(fileRepo, fsStore, *f.logger)
+}
+
+// CreateUserService creates a user service.
+func (f *Factory) CreateUserService() *service.User {
+	userStore := f.getStore(UserStore)
 	userRepo := f.createUserRepo(userStore)
-	sessionStore := f.getSessionStore(logger)
+	sessionStore := f.getStore(SessionStore)
 	sessionRepo := f.createSessionRepo(sessionStore)
 	hasher := f.getHasher()
 	rawChecker := f.createRawPasswordChecker()
 
-	return service.NewUser(userRepo, sessionRepo, hasher, rawChecker, logger)
+	return service.NewUser(userRepo, sessionRepo, hasher, rawChecker, *f.logger)
 }
 
+// CreateSessionService creates a session service.
 func (f *Factory) CreateSessionService() *service.Session {
-	logger := f.GetLogger()
-
-	sessionStore := f.getSessionStore(logger)
+	sessionStore := f.getStore(SessionStore)
 	sessionRepo := f.createSessionRepo(sessionStore)
 
-	return service.NewSession(sessionRepo, logger)
+	return service.NewSession(sessionRepo, *f.logger)
 }
 
-func (f *Factory) getFileSystem(logger log.Logger) service.FileSystem {
+func (f *Factory) getFileSystem() service.FileSystem {
 	if f.fileSystemInstance == nil {
-		wd, err := os.Getwd()
-		if err != nil {
-			panic(err)
-		}
-
-		f.fileSystemInstance = store.NewFileSystem(logger, filepath.Join(wd, "files"))
+		f.createFileSystem()
 	}
 
 	return f.fileSystemInstance
 }
 
+func (f *Factory) createFileSystem() {
+	if f.s3Client != nil {
+		f.fileSystemInstance = filesystem.NewS3(f.s3Client, *f.logger, f.appConfig.FileSystemAwsBucket)
+
+		return
+	}
+
+	workDir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+
+	f.fileSystemInstance = filesystem.NewLocal(*f.logger, filepath.Join(workDir, f.appConfig.FileSystemLocalPath))
+}
+
+// SetFileSystem sets the file system for the factory.
 func (f *Factory) SetFileSystem(fs service.FileSystem) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
@@ -86,66 +140,44 @@ func (f *Factory) SetFileSystem(fs service.FileSystem) {
 	f.fileSystemInstance = fs
 }
 
-func (f *Factory) getFileStore(logger log.Logger) repo.Store {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
+func (f *Factory) getStore(dataType DataType) repo.Store {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
 
-	if f.fileStoreInstance == nil {
-		f.fileStoreInstance = store.NewFile(logger, filepath.Join("data", "files.json"))
+	if f.stores[dataType] == nil {
+		f.stores[dataType] = f.createStore(dataType)
 	}
 
-	return f.fileStoreInstance
+	return f.stores[dataType]
 }
 
-func (f *Factory) SetFileStore(storeInstance repo.Store) {
+func (f *Factory) createStore(dataType DataType) repo.Store {
+	if f.s3Client != nil {
+		return store.NewS3(f.s3Client, *f.logger, f.appConfig.StoreAwsBucket, filePaths[dataType])
+	}
+
+	workDir, err := os.Getwd()
+	if err != nil {
+		panic(err)
+	}
+
+	return store.NewLocal(*f.logger, filepath.Join(workDir, f.appConfig.StoreLocalPath, filePaths[dataType]))
+}
+
+// SetStore sets the store for the factory.
+func (f *Factory) SetStore(storeInstance repo.Store, dataType DataType) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
-	f.fileStoreInstance = storeInstance
+	f.stores[dataType] = storeInstance
 }
 
 func (f *Factory) createFileRepo(fileStore repo.Store) *repo.File {
 	return repo.NewFile(fileStore)
 }
 
-func (f *Factory) getUserStore(logger log.Logger) repo.Store {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
-	if f.userStoreInstance == nil {
-		f.userStoreInstance = store.NewFile(logger, filepath.Join("data", "users.json"))
-	}
-
-	return f.userStoreInstance
-}
-
-func (f *Factory) SetUserStore(storeInstance repo.Store) {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
-	f.userStoreInstance = storeInstance
-}
-
 func (f *Factory) createUserRepo(userStore repo.Store) *repo.User {
 	return repo.NewUser(userStore)
-}
-
-func (f *Factory) getSessionStore(logger log.Logger) repo.Store {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
-	if f.sessionStoreInstance == nil {
-		f.sessionStoreInstance = store.NewFile(logger, filepath.Join("data", "sessions.json"))
-	}
-
-	return f.sessionStoreInstance
-}
-
-func (f *Factory) SetSessionStore(storeInstance repo.Store) {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
-	f.sessionStoreInstance = storeInstance
 }
 
 func (f *Factory) createSessionRepo(sessionStore repo.Store) *repo.Session {
@@ -153,8 +185,8 @@ func (f *Factory) createSessionRepo(sessionStore repo.Store) *repo.Session {
 }
 
 func (f *Factory) getHasher() service.PasswordHasher {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
 
 	if f.passwordHasherInstance == nil {
 		f.passwordHasherInstance = password.NewBcryptHasher()
@@ -163,6 +195,7 @@ func (f *Factory) getHasher() service.PasswordHasher {
 	return f.passwordHasherInstance
 }
 
+// SetHasher sets the password hasher for the factory.
 func (f *Factory) SetHasher(hasher service.PasswordHasher) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
@@ -174,6 +207,18 @@ func (f *Factory) createRawPasswordChecker() *password.Checker {
 	return password.NewChecker()
 }
 
+// GetLogger returns the logger.
 func (f *Factory) GetLogger() log.Logger {
-	return log.DefaultLogger
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+
+	return *f.logger
+}
+
+// SetLogger sets the logger for the factory.
+func (f *Factory) SetLogger(logger log.Logger) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	f.logger = &logger
 }

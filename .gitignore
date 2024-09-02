@@ -8,3 +8,6 @@ files/*
 
 password/testdata
 coverage
+
+.env
+cloudy-files-local-ak.csv

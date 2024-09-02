@@ -8,15 +8,15 @@ import (
 	"github.com/peteraba/cloudy-files/util"
 )
 
-type InMemoryFile struct {
+type InMemory struct {
 	m    *sync.Mutex
 	data []byte
 	spy  *util.Spy
 }
 
-// NewInMemoryFile creates a new InMemoryFile instance.
-func NewInMemoryFile(spy *util.Spy) *InMemoryFile {
-	return &InMemoryFile{
+// NewInMemory creates a new InMemory instance.
+func NewInMemory(spy *util.Spy) *InMemory {
+	return &InMemory{
 		m:    &sync.Mutex{},
 		data: make([]byte, 0),
 		spy:  spy,
@@ -24,46 +24,46 @@ func NewInMemoryFile(spy *util.Spy) *InMemoryFile {
 }
 
 // Read reads the file without acquiring the lock.
-func (imf *InMemoryFile) Read(_ context.Context) ([]byte, error) {
+func (i *InMemory) Read(_ context.Context) ([]byte, error) {
 	// Waiting for the lock to avoid reading inconsistent data
-	imf.waitForLock()
+	i.waitForLock()
 
-	if err := imf.spy.GetError("Read"); err != nil {
+	if err := i.spy.GetError("Read"); err != nil {
 		return nil, err
 	}
 
-	return imf.data, nil
+	return i.data, nil
 }
 
 // ReadForWrite reads the file after acquiring the lock.
-func (imf *InMemoryFile) ReadForWrite(_ context.Context) ([]byte, error) {
-	if err := imf.spy.GetError("ReadForWrite"); err != nil {
+func (i *InMemory) ReadForWrite(_ context.Context) ([]byte, error) {
+	if err := i.spy.GetError("ReadForWrite"); err != nil {
 		return nil, err
 	}
 
 	// Waiting for the lock to be able to lock the file
-	imf.waitForLock()
+	i.waitForLock()
 
 	// Locking the file
-	imf.lock()
+	i.lock()
 
-	return imf.data, nil
+	return i.data, nil
 }
 
 // Write writes the data to the file after acquiring the lock.
-func (imf *InMemoryFile) Write(ctx context.Context, data []byte) error {
-	if err := imf.spy.GetError("Write", data); err != nil {
+func (i *InMemory) Write(ctx context.Context, data []byte) error {
+	if err := i.spy.GetError("Write", data); err != nil {
 		return err
 	}
 
 	// Waiting for the lock to be able to lock the file
-	imf.waitForLock()
+	i.waitForLock()
 
 	// Locking the file
-	imf.lock()
-	defer imf.Unlock(ctx)
+	i.lock()
+	defer i.Unlock(ctx)
 
-	imf.data = data
+	i.data = data
 
 	return nil
 }
@@ -73,40 +73,40 @@ var ErrLockDoesNotExist = errors.New("lock not locked")
 // WriteLocked writes data to the file after acquiring a lock
 // used in pair with ReadForWrite.
 // It returns an error if the lock file does not exist.
-func (imf *InMemoryFile) WriteLocked(_ context.Context, data []byte) error {
-	if err := imf.spy.GetError("WriteLocked", data); err != nil {
+func (i *InMemory) WriteLocked(_ context.Context, data []byte) error {
+	if err := i.spy.GetError("WriteLocked", data); err != nil {
 		return err
 	}
 
-	if imf.m.TryLock() {
-		defer imf.m.Unlock()
+	if i.m.TryLock() {
+		defer i.m.Unlock()
 
 		return ErrLockDoesNotExist
 	}
 
-	imf.data = data
+	i.data = data
 
 	return nil
 }
 
 // waitForLock waits for the lock file to be removed by any other process
 // which may hold it. It retries for a maximum of N times.
-func (imf *InMemoryFile) waitForLock() {
-	imf.m.Lock()
-	defer imf.m.Unlock()
+func (i *InMemory) waitForLock() {
+	i.m.Lock()
+	defer i.m.Unlock()
 
 	_ = ""
 }
 
 // lock creates a lock file to prevent other processes from writing to the file.
 // It returns an error if the lock file already exists at the time of creation.
-func (imf *InMemoryFile) lock() {
-	imf.m.Lock()
+func (i *InMemory) lock() {
+	i.m.Lock()
 }
 
 // Unlock removes the lock.
-func (imf *InMemoryFile) Unlock(_ context.Context) error {
-	imf.m.Unlock()
+func (i *InMemory) Unlock(_ context.Context) error {
+	i.m.Unlock()
 
 	return nil
 }

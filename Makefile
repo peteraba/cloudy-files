@@ -10,5 +10,5 @@ lint:
 
 .PHONY: test
 test: lint
-	go test -v -bench=. --race ./...
+	go test -bench=. --race ./...
 	#go test -v -fuzz=. ./password

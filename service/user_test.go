@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/peteraba/cloudy-files/appconfig"
 	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/compose"
 	"github.com/peteraba/cloudy-files/password"
@@ -26,18 +27,18 @@ func TestUser_Create_and_Login(t *testing.T) {
 	setup := func(t *testing.T, userStoreSpy, sessionStoreSpy *util.Spy, userData, sessionData []byte) *service.User {
 		t.Helper()
 
-		userStore := store.NewInMemoryFile(userStoreSpy)
+		userStore := store.NewInMemory(userStoreSpy)
 		err := userStore.Write(ctx, userData)
 		require.NoError(t, err)
 
-		sessionStore := store.NewInMemoryFile(sessionStoreSpy)
+		sessionStore := store.NewInMemory(sessionStoreSpy)
 		err = sessionStore.Write(ctx, sessionData)
 		require.NoError(t, err)
 
-		factory := compose.NewFactory()
+		factory := compose.NewTestFactory(appconfig.NewConfig())
 
-		factory.SetUserStore(userStore)
-		factory.SetSessionStore(sessionStore)
+		factory.SetStore(userStore, compose.UserStore)
+		factory.SetStore(sessionStore, compose.SessionStore)
 
 		return factory.CreateUserService()
 	}
@@ -273,13 +274,13 @@ func TestUser_CheckPassword(t *testing.T) {
 	setup := func(t *testing.T, userStoreSpy *util.Spy, userData []byte) *service.User {
 		t.Helper()
 
-		userStore := store.NewInMemoryFile(userStoreSpy)
+		userStore := store.NewInMemory(userStoreSpy)
 		err := userStore.Write(ctx, userData)
 		require.NoError(t, err)
 
-		factory := compose.NewFactory()
+		factory := compose.NewTestFactory(appconfig.NewConfig())
 
-		factory.SetUserStore(userStore)
+		factory.SetStore(userStore, compose.UserStore)
 
 		return factory.CreateUserService()
 	}
@@ -314,7 +315,7 @@ func TestUser_HashPassword(t *testing.T) {
 	setup := func(t *testing.T, hasherSpy *util.Spy) *service.User {
 		t.Helper()
 
-		factory := compose.NewFactory()
+		factory := compose.NewTestFactory(appconfig.NewConfig())
 
 		hasher := password.NewDummyHasher(hasherSpy)
 		factory.SetHasher(hasher)
@@ -369,7 +370,7 @@ func TestUser_CheckPasswordHash(t *testing.T) {
 	setup := func(t *testing.T, hasherSpy *util.Spy) *service.User {
 		t.Helper()
 
-		factory := compose.NewFactory()
+		factory := compose.NewTestFactory(appconfig.NewConfig())
 
 		hasher := password.NewDummyHasher(hasherSpy)
 		factory.SetHasher(hasher)
