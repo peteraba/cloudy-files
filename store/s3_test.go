@@ -26,9 +26,7 @@ func TestS3_Write_and_Read(t *testing.T) {
 		const bucket = "cloudy-files-123-test"
 
 		awsConfig, err := config.LoadDefaultConfig(ctx)
-		if err != nil || awsConfig.BaseEndpoint == nil {
-			t.SkipNow()
-		}
+		require.NoError(t, err)
 
 		factory := compose.NewTestFactory(appconfig.NewConfig()).SetAWS(awsConfig)
 
@@ -170,9 +168,7 @@ func TestS3_ReadForWrite_and_WriteLocked(t *testing.T) {
 		const bucket = "cloudy-files-123-test"
 
 		awsConfig, err := config.LoadDefaultConfig(ctx)
-		if err != nil || awsConfig.BaseEndpoint == nil {
-			t.SkipNow()
-		}
+		require.NoError(t, err)
 
 		factory := compose.NewTestFactory(appconfig.NewConfig()).SetAWS(awsConfig)
 
