@@ -117,16 +117,16 @@ func (s *Session) Check(ctx context.Context, name, hash string) (bool, error) {
 const hashLength = 32
 
 // Start starts a new session.
-func (s *Session) Start(ctx context.Context, name string, isAdmin bool, access []string) (string, error) {
+func (s *Session) Start(ctx context.Context, name string, isAdmin bool, access []string) (SessionModel, error) {
 	err := s.readForWrite(ctx)
 	if err != nil {
-		return "", err
+		return SessionModel{}, err
 	}
 	defer s.store.Unlock(ctx)
 
 	hash, err := util.RandomHex(hashLength)
 	if err != nil {
-		return "", fmt.Errorf("error generating random hash: %w", err)
+		return SessionModel{}, fmt.Errorf("error generating random hash: %w", err)
 	}
 
 	s.lock.Lock()
@@ -141,10 +141,10 @@ func (s *Session) Start(ctx context.Context, name string, isAdmin bool, access [
 
 	err = s.writeAfterRead(ctx)
 	if err != nil {
-		return "", err
+		return SessionModel{}, err
 	}
 
-	return hash, nil
+	return s.entries[name], nil
 }
 
 // CleanUp cleans up the session.

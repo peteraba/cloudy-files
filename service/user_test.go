@@ -56,8 +56,9 @@ func TestUser_Create_and_Login(t *testing.T) {
 		sut := setup(t, unusedSpy, unusedSpy, []byte("invalid json"), nil)
 
 		// execute
-		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
+		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.Error(t, err)
+		require.Empty(t, userModel)
 
 		// assert
 		assert.ErrorContains(t, err, "error unmarshaling data")
@@ -76,8 +77,9 @@ func TestUser_Create_and_Login(t *testing.T) {
 		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 
 		// execute
-		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
+		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.Error(t, err)
+		require.Empty(t, userModel)
 
 		// assert
 		assert.ErrorContains(t, err, "password is not OK")
@@ -98,8 +100,9 @@ func TestUser_Create_and_Login(t *testing.T) {
 		sut := setup(t, userStoreSpy, unusedSpy, nil, nil)
 
 		// execute
-		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
+		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.Error(t, err)
+		require.Empty(t, userModel)
 
 		// assert
 		assert.ErrorIs(t, err, assert.AnError)
@@ -118,8 +121,9 @@ func TestUser_Create_and_Login(t *testing.T) {
 		sut := setup(t, unusedSpy, unusedSpy, []byte("invalid json"), nil)
 
 		// execute
-		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
+		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.Error(t, err)
+		require.Empty(t, userModel)
 
 		// assert
 		assert.ErrorContains(t, err, "error unmarshaling data")
@@ -137,8 +141,9 @@ func TestUser_Create_and_Login(t *testing.T) {
 		// setup
 		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 
-		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
+		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
+		require.NotEmpty(t, userModel)
 
 		// extra
 		wrongPassword := stubPassword + " "
@@ -185,8 +190,9 @@ func TestUser_Create_and_Login(t *testing.T) {
 		// setup
 		sut := setup(t, unusedSpy, unusedSpy, nil, []byte("invalid json"))
 
-		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
+		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
+		require.NotEmpty(t, userModel)
 
 		// execute
 		hash, err := sut.Login(ctx, stubName, stubPassword)
@@ -209,8 +215,9 @@ func TestUser_Create_and_Login(t *testing.T) {
 		// setup
 		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 
-		err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
+		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
+		require.NotEmpty(t, userModel)
 
 		// extra
 		err = sut.CheckPassword(ctx, stubName, stubPassword)
@@ -235,8 +242,9 @@ func TestUser_Create_and_Login(t *testing.T) {
 		// setup
 		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
 
-		err := sut.Create(ctx, stubName, stubEmail, stubPassword, true, []string{})
+		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, true, []string{})
 		require.NoError(t, err)
+		require.NotEmpty(t, userModel)
 
 		// extra
 		err = sut.CheckPassword(ctx, stubName, stubPassword)

@@ -1,6 +1,10 @@
 package apperr
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"net/http"
+)
 
 // ErrAccessDenied represents an access denied error.
 var ErrAccessDenied = errors.New("access denied")
@@ -14,11 +18,61 @@ var ErrExists = errors.New("already exists")
 // ErrLockTimeout is returned when a lock cannot be acquired.
 var ErrLockTimeout = errors.New("lock timeout")
 
-// ErrPwnedPassword is returned when the password is in the pwned password database.
-var ErrPwnedPassword = errors.New("password is pwned")
-
 // ErrPasswordTooLong is returned when the password is too long.
 var ErrPasswordTooLong = errors.New("password is too long")
 
 // ErrInvalidArgument is returned when a method is called with an invalid argument.
 var ErrInvalidArgument = errors.New("invalid argument")
+
+// ErrNotImplemented is returned when a method is not implemented.
+var ErrNotImplemented = errors.New("not implemented")
+
+// HTTPError represents a JSON error response.
+type HTTPError struct {
+	Type   string `json:"type,omitempty"`
+	Title  string `json:"title"`
+	Status int    `json:"status"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// Error returns the error message.
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("%d %s %s", e.Status, e.Title, e.Detail)
+}
+
+// GetHTTPError returns an error response.
+func GetHTTPError(err error) *HTTPError {
+	if errors.Is(err, ErrAccessDenied) {
+		return &HTTPError{
+			Type:   "",
+			Title:  "Access denied",
+			Status: http.StatusForbidden,
+			Detail: err.Error(),
+		}
+	}
+
+	if errors.Is(err, ErrNotFound) {
+		return &HTTPError{
+			Type:   "",
+			Title:  "Not found",
+			Status: http.StatusNotFound,
+			Detail: err.Error(),
+		}
+	}
+
+	if errors.Is(err, ErrNotImplemented) {
+		return &HTTPError{
+			Type:   "",
+			Title:  "Not found",
+			Status: http.StatusNotFound,
+			Detail: err.Error(),
+		}
+	}
+
+	return &HTTPError{
+		Type:   "",
+		Title:  "Internal error",
+		Status: http.StatusInternalServerError,
+		Detail: err.Error(),
+	}
+}

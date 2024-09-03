@@ -8,13 +8,13 @@ import (
 
 type UserRepo interface {
 	Get(ctx context.Context, name string) (repo.UserModel, error)
-	Create(ctx context.Context, name, email, password string, isAdmin bool, access []string) error
+	Create(ctx context.Context, name, email, password string, isAdmin bool, access []string) (repo.UserModel, error)
 }
 
 type SessionRepo interface {
 	Get(ctx context.Context, name, hash string) (repo.SessionModel, error)
 	Check(ctx context.Context, name, hash string) (bool, error)
-	Start(ctx context.Context, name string, isAdmin bool, access []string) (string, error)
+	Start(ctx context.Context, name string, isAdmin bool, access []string) (repo.SessionModel, error)
 	CleanUp(ctx context.Context) error
 }
 
@@ -34,5 +34,5 @@ type FileSystem interface {
 
 type FileRepo interface {
 	Get(ctx context.Context, name string) (repo.FileModel, error)
-	Create(ctx context.Context, name string, access []string) error
+	Create(ctx context.Context, name string, access []string) (repo.FileModel, error)
 }

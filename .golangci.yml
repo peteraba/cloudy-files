@@ -95,7 +95,7 @@ linters-settings:
 
   mnd:
     ignored-files:
-      - "cli\\.go"
+      - "app\\.go"
 
   nakedret:
     # Make an issue if func has more lines of code than this setting, and it has naked returns.
@@ -213,6 +213,8 @@ linters-settings:
       - const C
       - T any
       - m map[string]int
+      - w http.ResponseWriter
+      - r *http.Request
 
   whitespace:
     # Enforces newlines (or comments) after every multi-line if statement.
@@ -294,13 +296,13 @@ issues:
     - text: "default"
       linters:
         - gochecknoglobals
-    - path: cli/cli.go
-      linters:
-        - forbidigo
     - path: main.go
       linters:
-        - cyclop
         - forbidigo
+    - path: cli/app.go
+      linters:
+        - forbidigo
+        - cyclop
         - gocyclo
     - text: "logger is heavy"
       linters:

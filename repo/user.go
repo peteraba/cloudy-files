@@ -82,10 +82,10 @@ func (u *User) Get(ctx context.Context, name string) (UserModel, error) {
 }
 
 // Create creates a new user.
-func (u *User) Create(ctx context.Context, name, email, password string, isAdmin bool, access []string) error {
+func (u *User) Create(ctx context.Context, name, email, password string, isAdmin bool, access []string) (UserModel, error) {
 	err := u.readForWrite(ctx)
 	if err != nil {
-		return err
+		return UserModel{}, err
 	}
 	defer u.store.Unlock(ctx)
 
@@ -94,7 +94,7 @@ func (u *User) Create(ctx context.Context, name, email, password string, isAdmin
 
 	_, ok := u.entries[name]
 	if ok {
-		return fmt.Errorf("user already exists: %s, err: %w", name, apperr.ErrExists)
+		return UserModel{}, fmt.Errorf("user already exists: %s, err: %w", name, apperr.ErrExists)
 	}
 
 	u.entries[name] = UserModel{
@@ -107,10 +107,10 @@ func (u *User) Create(ctx context.Context, name, email, password string, isAdmin
 
 	err = u.writeAfterRead(ctx)
 	if err != nil {
-		return err
+		return UserModel{}, err
 	}
 
-	return nil
+	return u.entries[name], nil
 }
 
 // read reads the session data from the store and creates entries.

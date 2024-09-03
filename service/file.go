@@ -7,42 +7,55 @@ import (
 	"github.com/phuslu/log"
 
 	"github.com/peteraba/cloudy-files/apperr"
+	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/util"
 )
 
+// File is a service that provides file-related operations.
 type File struct {
 	logger log.Logger
 	repo   FileRepo
 	store  FileSystem
 }
 
-func NewFile(repo FileRepo, store FileSystem, logger log.Logger) *File {
+// NewFile creates a new File service.
+func NewFile(fileRepo FileRepo, store FileSystem, logger log.Logger) *File {
 	return &File{
 		logger: logger,
-		repo:   repo,
+		repo:   fileRepo,
 		store:  store,
 	}
 }
 
 // Upload uploads a file with the given name and content.
-func (f *File) Upload(ctx context.Context, name string, content []byte, access []string) error {
+func (f *File) Upload(ctx context.Context, name string, content []byte, access []string) (repo.FileModel, error) {
 	f.logger.Info().Str("name", name).Msg("uploading file")
 
 	err := f.store.Write(ctx, name, content)
 	if err != nil {
-		return fmt.Errorf("error writing file: %w", err)
+		return repo.FileModel{}, fmt.Errorf("error writing file: %w", err)
 	}
 
 	f.logger.Info().Str("name", name).Msg("updating file DB")
 
-	err = f.repo.Create(ctx, name, access)
+	fileModel, err := f.repo.Create(ctx, name, access)
 	if err != nil {
-		return fmt.Errorf("error creating model: %w", err)
+		return repo.FileModel{}, fmt.Errorf("error creating model: %w", err)
 	}
 
 	f.logger.Info().Str("name", name).Msg("updated file")
 
-	return nil
+	return fileModel, nil
+}
+
+// Get retrieves a file model.
+func (f *File) Get(ctx context.Context, name string) (repo.FileModel, error) {
+	file, err := f.repo.Get(ctx, name)
+	if err != nil {
+		return repo.FileModel{}, fmt.Errorf("error retrieving model: %w", err)
+	}
+
+	return file, nil
 }
 
 // Retrieve retrieves the content of a file by name.

@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/phuslu/log"
+
+	"github.com/peteraba/cloudy-files/repo"
 )
 
 // User is a service that provides user-related operations.
@@ -17,10 +19,10 @@ type User struct {
 }
 
 // NewUser creates a new User service.
-func NewUser(repo UserRepo, sessionRepo SessionRepo, passwordHasher PasswordHasher, passwordChecker PasswordChecker, logger log.Logger) *User {
+func NewUser(userRepo UserRepo, sessionRepo SessionRepo, passwordHasher PasswordHasher, passwordChecker PasswordChecker, logger log.Logger) *User {
 	return &User{
 		logger:          logger,
-		repo:            repo,
+		repo:            userRepo,
 		sessionRepo:     sessionRepo,
 		passwordHasher:  passwordHasher,
 		passwordChecker: passwordChecker,
@@ -30,25 +32,25 @@ func NewUser(repo UserRepo, sessionRepo SessionRepo, passwordHasher PasswordHash
 // Create creates a new user.
 // It hashes the password and stores the user in the repository.
 // It also checks if the raw password is OK.
-func (u *User) Create(ctx context.Context, name, email, password string, isAdmin bool, access []string) error {
+func (u *User) Create(ctx context.Context, name, email, password string, isAdmin bool, access []string) (repo.UserModel, error) {
 	hash, err := u.HashPassword(ctx, password)
 	if err != nil {
-		return err
+		return repo.UserModel{}, err
 	}
 
-	err = u.repo.Create(ctx, name, email, hash, isAdmin, access)
+	userModel, err := u.repo.Create(ctx, name, email, hash, isAdmin, access)
 	if err != nil {
-		return fmt.Errorf("failed to create user: %w", err)
+		return repo.UserModel{}, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	return nil
+	return userModel, nil
 }
 
 // Login logs in a user with the given username and password and returns a session hash.
-func (u *User) Login(ctx context.Context, userName, password string) (string, error) {
+func (u *User) Login(ctx context.Context, userName, password string) (repo.SessionModel, error) {
 	user, err := u.repo.Get(ctx, userName)
 	if err != nil {
-		return "", fmt.Errorf("failed to retrieve user: %w", err)
+		return repo.SessionModel{}, fmt.Errorf("failed to retrieve user: %w", err)
 	}
 
 	// CheckPassword if the password matches
@@ -56,13 +58,13 @@ func (u *User) Login(ctx context.Context, userName, password string) (string, er
 	if err != nil {
 		u.logger.Info().Msg("Password retrieved: " + user.Password)
 
-		return "", fmt.Errorf("password does not match: %w", err)
+		return repo.SessionModel{}, fmt.Errorf("password does not match: %w", err)
 	}
 
 	// Start a session
 	hash, err := u.sessionRepo.Start(ctx, userName, user.IsAdmin, user.Access)
 	if err != nil {
-		return "", fmt.Errorf("failed to start session: %w", err)
+		return repo.SessionModel{}, fmt.Errorf("failed to start session: %w", err)
 	}
 
 	return hash, nil

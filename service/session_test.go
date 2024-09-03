@@ -67,8 +67,9 @@ func TestSession_Check(t *testing.T) {
 		// setup
 		sut, userService := setup(t, unusedSpy, unusedSpy)
 
-		err := userService.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
+		userModel, err := userService.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
+		require.NotEmpty(t, userModel)
 
 		// execute
 		exists, err := sut.Check(ctx, stubName, stubHash)
@@ -90,15 +91,16 @@ func TestSession_Check(t *testing.T) {
 		// setup
 		sut, userService := setup(t, unusedSpy, unusedSpy)
 
-		err := userService.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
+		userModel, err := userService.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
+		require.NotEmpty(t, userModel)
 
-		sessionHash, err := userService.Login(ctx, stubName, stubPassword)
+		sessionModel, err := userService.Login(ctx, stubName, stubPassword)
 		require.NoError(t, err)
-		require.NotEmpty(t, sessionHash)
+		require.NotEmpty(t, sessionModel)
 
 		// execute
-		exists, err := sut.Check(ctx, stubName, sessionHash)
+		exists, err := sut.Check(ctx, stubName, sessionModel.Hash)
 
 		// assert
 		require.NoError(t, err)

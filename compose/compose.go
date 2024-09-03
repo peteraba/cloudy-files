@@ -10,7 +10,9 @@ import (
 	"github.com/phuslu/log"
 
 	"github.com/peteraba/cloudy-files/appconfig"
+	"github.com/peteraba/cloudy-files/cli"
 	"github.com/peteraba/cloudy-files/filesystem"
+	"github.com/peteraba/cloudy-files/http"
 	"github.com/peteraba/cloudy-files/password"
 	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/service"
@@ -64,13 +66,6 @@ func NewTestFactory(appConfig *appconfig.Config) *Factory {
 	return f
 }
 
-// SetAWS sets the AWS configuration for the factory.
-func (f *Factory) SetAWS(awsConfig aws.Config) *Factory { //nolint:gocritic // aws.Config might be huge (320 bytes, but it's a one-off)
-	f.s3Client = s3.NewFromConfig(awsConfig)
-
-	return f
-}
-
 func (f *Factory) SetLogLevel(level log.Level) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
@@ -84,6 +79,33 @@ func (f *Factory) SetLogLevel(level log.Level) {
 		Context:      nil,
 		Writer:       log.IOWriter{Writer: os.Stderr},
 	}
+}
+
+// SetAWS sets the AWS configuration for the factory.
+func (f *Factory) SetAWS(awsConfig aws.Config) *Factory { //nolint:gocritic // aws.Config might be huge (320 bytes, but it's a one-off)
+	f.s3Client = s3.NewFromConfig(awsConfig)
+
+	return f
+}
+
+// CreateCliApp creates a CLI app.
+func (f *Factory) CreateCliApp() *cli.App {
+	return cli.NewApp(
+		f.CreateSessionService(),
+		f.CreateUserService(),
+		f.CreateFileService(),
+		f.logger,
+	)
+}
+
+// CreateHTTPApp creates an HTTP app.
+func (f *Factory) CreateHTTPApp() *http.App {
+	return http.NewApp(
+		f.CreateSessionService(),
+		f.CreateUserService(),
+		f.CreateFileService(),
+		f.logger,
+	)
 }
 
 // GetS3Client returns the S3 client.

@@ -50,10 +50,10 @@ func (f *File) Get(ctx context.Context, name string) (FileModel, error) {
 }
 
 // Create creates a file with the given name and access.
-func (f *File) Create(ctx context.Context, name string, access []string) error {
+func (f *File) Create(ctx context.Context, name string, access []string) (FileModel, error) {
 	err := f.readForWrite(ctx)
 	if err != nil {
-		return fmt.Errorf("error reading file: %w", err)
+		return FileModel{}, fmt.Errorf("error reading file: %w", err)
 	}
 	defer f.store.Unlock(ctx)
 
@@ -67,10 +67,10 @@ func (f *File) Create(ctx context.Context, name string, access []string) error {
 
 	err = f.writeAfterRead(ctx)
 	if err != nil {
-		return fmt.Errorf("error writing file: %w", err)
+		return FileModel{}, fmt.Errorf("error writing file: %w", err)
 	}
 
-	return nil
+	return f.entries[name], nil
 }
 
 // read reads the session data from the store and creates entries.
