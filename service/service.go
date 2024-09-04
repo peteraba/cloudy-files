@@ -8,6 +8,7 @@ import (
 
 type UserRepo interface {
 	Get(ctx context.Context, name string) (repo.UserModel, error)
+	List(ctx context.Context) (repo.UserModels, error)
 	Create(ctx context.Context, name, email, password string, isAdmin bool, access []string) (repo.UserModel, error)
 }
 
@@ -34,5 +35,6 @@ type FileSystem interface {
 
 type FileRepo interface {
 	Get(ctx context.Context, name string) (repo.FileModel, error)
+	List(ctx context.Context) (repo.FileModels, error)
 	Create(ctx context.Context, name string, access []string) (repo.FileModel, error)
 }

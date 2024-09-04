@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -119,9 +120,20 @@ func (a *App) Start(mux *http.ServeMux) {
 
 // ListUsers lists users.
 func (a *App) ListUsers(w http.ResponseWriter, r *http.Request) {
-	_ = r
+	users, err := a.userService.List(r.Context())
+	if err != nil {
+		a.error(w, r, err)
 
-	a.error(w, r, apperr.ErrNotImplemented)
+		return
+	}
+
+	if isJSONRequest(r) {
+		a.json(w, users)
+
+		return
+	}
+
+	a.html(w, users)
 }
 
 // GetUser retrieves a user.
@@ -176,9 +188,49 @@ func (a *App) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 // ListFiles lists files.
 func (a *App) ListFiles(w http.ResponseWriter, r *http.Request) {
-	_ = r
+	files, err := a.fileService.List(r.Context(), nil, true)
+	if err != nil {
+		a.error(w, r, err)
 
-	a.error(w, r, apperr.ErrNotImplemented)
+		return
+	}
+
+	if isJSONRequest(r) {
+		a.json(w, files)
+
+		return
+	}
+
+	fileHTML := make([]string, 0, len(files))
+	for _, file := range files {
+		fileHTML = append(fileHTML, fmt.Sprintf(
+			`<tr>
+	<td>%s</td>
+	<td>%s</td>
+</tr>
+`,
+			file.Name,
+			strings.Join(file.Access, ", "),
+		))
+	}
+
+	tmpl := fmt.Sprintf(
+		`<table>
+	<thead>
+		<tr>
+			<th>Name</th>
+			<th>Access</th>
+		</tr>
+	</thead>
+	<tbody>
+%s
+	</tbody>
+</table>
+`,
+		strings.Join(fileHTML, ""),
+	)
+
+	a.html(w, tmpl)
 }
 
 // DeleteFile deletes a file.

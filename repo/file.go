@@ -15,11 +15,28 @@ type FileModel struct {
 	Access []string `json:"access"`
 }
 
+// FileModels represents a file model list.
+type FileModels []FileModel
+
+// FileModelMap represents a file model map.
+type FileModelMap map[string]FileModel
+
+// Slice returns the file models as a slice.
+func (f FileModelMap) Slice() FileModels {
+	files := FileModels{}
+
+	for _, file := range f {
+		files = append(files, file)
+	}
+
+	return files
+}
+
 // File represents a file.
 type File struct {
 	store   Store
 	lock    *sync.Mutex
-	entries map[string]FileModel
+	entries FileModelMap
 }
 
 // NewFile creates a new file instance.
@@ -27,8 +44,21 @@ func NewFile(store Store) *File {
 	return &File{
 		store:   store,
 		lock:    &sync.Mutex{},
-		entries: make(map[string]FileModel),
+		entries: make(FileModelMap),
 	}
+}
+
+// List lists all files.
+func (f *File) List(ctx context.Context) (FileModels, error) {
+	err := f.read(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching from store: %w", err)
+	}
+
+	f.lock.Lock()
+	defer f.lock.Unlock()
+
+	return f.entries.Slice(), nil
 }
 
 // Get retrieves a file by name.

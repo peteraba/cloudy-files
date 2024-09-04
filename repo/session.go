@@ -21,6 +21,9 @@ type SessionModel struct {
 	Access  []string `json:"access"`
 }
 
+// SessionModels represents a session model list.
+type SessionModels []SessionModel
+
 // Store represents a session store.
 type Store interface {
 	Read(ctx context.Context) ([]byte, error)

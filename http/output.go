@@ -110,7 +110,7 @@ func (a *App) html(w http.ResponseWriter, content interface{}) {
 
 	body := fmt.Sprint(content)
 	if httpError, ok := content.(*apperr.HTTPError); ok {
-		body = fmt.Sprintf(`<section class="container">
+		body = fmt.Sprintf(`
   <h3>Error</h3>
 <table>
   <thead>
@@ -138,17 +138,19 @@ func (a *App) html(w http.ResponseWriter, content interface{}) {
 	}
 
 	tmpl := `<html>
-<head>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
-</head>
-<body>
-<main class="wrapper">
-<nav class="navigation"><section class="container">&nbsp;</section></nav>
+	<head>
+		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.css">
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/milligram/1.4.1/milligram.css">
+	</head>
+	<body>
+		<main class="wrapper">
+			<nav class="navigation"><section class="container">&nbsp;</section></nav>
+			<section class="container">
 %s
-</main>
-</body>
+			</section>
+		</main>
+	</body>
 </html>
 `
 

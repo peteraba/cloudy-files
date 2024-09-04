@@ -76,3 +76,25 @@ func (f *File) Retrieve(ctx context.Context, name string, access []string) ([]by
 
 	return data, nil
 }
+
+// List lists files.
+func (f *File) List(ctx context.Context, access []string, isAdmin bool) (repo.FileModels, error) {
+	fileModels, err := f.repo.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error listing files: %w", err)
+	}
+
+	if isAdmin {
+		return fileModels, nil
+	}
+
+	var accessibleFiles []repo.FileModel
+
+	for _, file := range fileModels {
+		if len(util.Intersection(file.Access, access)) > 0 {
+			accessibleFiles = append(accessibleFiles, file)
+		}
+	}
+
+	return accessibleFiles, nil
+}

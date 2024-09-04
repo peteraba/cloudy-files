@@ -18,11 +18,28 @@ type UserModel struct {
 	Access   []string `json:"access"`
 }
 
+// UserModels represents a user model list.
+type UserModels []UserModel
+
+// UserModelMap represents a user model map.
+type UserModelMap map[string]UserModel
+
+// Slice returns the user models as a slice.
+func (u UserModelMap) Slice() UserModels {
+	users := UserModels{}
+
+	for _, user := range u {
+		users = append(users, user)
+	}
+
+	return users
+}
+
 // User represents a user.
 type User struct {
 	store   Store
 	lock    *sync.Mutex
-	entries map[string]UserModel
+	entries UserModelMap
 }
 
 // NewUser creates a new user instance.
@@ -61,6 +78,19 @@ func (u *User) getData() ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+// List lists all users.
+func (u *User) List(ctx context.Context) (UserModels, error) {
+	err := u.read(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	u.lock.Lock()
+	defer u.lock.Unlock()
+
+	return u.entries.Slice(), nil
 }
 
 // Get retrieves a user by name.

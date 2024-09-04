@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 // ErrAccessDenied represents an access denied error.
@@ -42,12 +43,14 @@ func (e *HTTPError) Error() string {
 
 // GetHTTPError returns an error response.
 func GetHTTPError(err error) *HTTPError {
+	detail := strings.TrimRight(strings.Title(err.Error()), ".") + "." //nolint:staticcheck // No need for unicode punctuation
+
 	if errors.Is(err, ErrAccessDenied) {
 		return &HTTPError{
 			Type:   "",
 			Title:  "Access denied",
 			Status: http.StatusForbidden,
-			Detail: err.Error(),
+			Detail: detail,
 		}
 	}
 
@@ -56,7 +59,7 @@ func GetHTTPError(err error) *HTTPError {
 			Type:   "",
 			Title:  "Not found",
 			Status: http.StatusNotFound,
-			Detail: err.Error(),
+			Detail: detail,
 		}
 	}
 
@@ -65,7 +68,7 @@ func GetHTTPError(err error) *HTTPError {
 			Type:   "",
 			Title:  "Not found",
 			Status: http.StatusNotFound,
-			Detail: err.Error(),
+			Detail: detail,
 		}
 	}
 
@@ -73,6 +76,6 @@ func GetHTTPError(err error) *HTTPError {
 		Type:   "",
 		Title:  "Internal error",
 		Status: http.StatusInternalServerError,
-		Detail: err.Error(),
+		Detail: detail,
 	}
 }

@@ -113,3 +113,8 @@ func (u *User) CheckPasswordHash(ctx context.Context, password, hash string) err
 
 	return nil
 }
+
+// List lists all users.
+func (u *User) List(ctx context.Context) (repo.UserModels, error) {
+	return u.repo.List(ctx) //nolint:wrapcheck // To be fixed
+}
