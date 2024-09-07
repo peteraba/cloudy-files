@@ -13,8 +13,7 @@ type UserRepo interface {
 }
 
 type SessionRepo interface {
-	Get(ctx context.Context, name, hash string) (repo.SessionModel, error)
-	Check(ctx context.Context, name, hash string) (bool, error)
+	Get(ctx context.Context, name string) (repo.SessionModel, error)
 	Start(ctx context.Context, name string, isAdmin bool, access []string) (repo.SessionModel, error)
 	CleanUp(ctx context.Context) error
 }

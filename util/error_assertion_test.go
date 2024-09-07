@@ -8,7 +8,7 @@ import (
 	"github.com/peteraba/cloudy-files/util"
 )
 
-// Note: testing failures is hard due to the fact that helper would fail the test.
+// Note: test failures is hard due to the fact that helper would fail the test.
 func TestErrorContains(t *testing.T) {
 	t.Parallel()
 
@@ -26,7 +26,7 @@ func TestErrorContains(t *testing.T) {
 	})
 }
 
-// Note: testing failures is hard due to the fact that helper would fail the test.
+// Note: test failures is hard due to the fact that helper would fail the test.
 func TestErrorIs(t *testing.T) {
 	t.Parallel()
 

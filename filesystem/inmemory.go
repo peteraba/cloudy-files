@@ -23,6 +23,11 @@ func NewInMemory(spy *util.Spy) *InMemory {
 	}
 }
 
+// GetSpy returns the spy instance.
+func (i *InMemory) GetSpy() *util.Spy {
+	return i.spy
+}
+
 // Write writes data to memory.
 func (i *InMemory) Write(_ context.Context, name string, data []byte) error {
 	i.mutex.Lock()

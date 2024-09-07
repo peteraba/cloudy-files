@@ -24,6 +24,8 @@ type SessionModel struct {
 // SessionModels represents a session model list.
 type SessionModels []SessionModel
 
+type SessionModelMap map[string]SessionModel
+
 // Store represents a session store.
 type Store interface {
 	Read(ctx context.Context) ([]byte, error)
@@ -37,7 +39,7 @@ type Store interface {
 type Session struct {
 	store   Store
 	lock    *sync.Mutex
-	entries map[string]SessionModel
+	entries SessionModelMap
 }
 
 // NewSession creates a new session instance.
@@ -45,7 +47,7 @@ func NewSession(store Store) *Session {
 	return &Session{
 		store:   store,
 		lock:    &sync.Mutex{},
-		entries: make(map[string]SessionModel),
+		entries: make(SessionModelMap),
 	}
 }
 
@@ -79,7 +81,7 @@ func (s *Session) getData() ([]byte, error) {
 }
 
 // Get gets the session.
-func (s *Session) Get(ctx context.Context, name, hash string) (SessionModel, error) {
+func (s *Session) Get(ctx context.Context, name string) (SessionModel, error) {
 	data, err := s.store.Read(ctx)
 	if err != nil {
 		return SessionModel{}, fmt.Errorf("error reading file: %w", err)
@@ -92,29 +94,10 @@ func (s *Session) Get(ctx context.Context, name, hash string) (SessionModel, err
 
 	storedValue, ok := s.entries[name]
 	if !ok {
-		return SessionModel{}, nil //nolint:exhaustruct // Checked
-	}
-
-	now := time.Now().Unix()
-	if storedValue.Expires < now {
-		return SessionModel{}, nil //nolint:exhaustruct // Checked
-	}
-
-	if storedValue.Hash != hash {
-		return SessionModel{}, apperr.ErrAccessDenied
+		return SessionModel{}, apperr.ErrNotFound
 	}
 
 	return storedValue, nil
-}
-
-// Check checks if the session is valid.
-func (s *Session) Check(ctx context.Context, name, hash string) (bool, error) {
-	storedValue, err := s.Get(ctx, name, hash)
-	if err != nil {
-		return false, fmt.Errorf("error getting session: %w", err)
-	}
-
-	return storedValue.Hash == hash, nil
 }
 
 const hashLength = 32
@@ -161,19 +144,18 @@ func (s *Session) CleanUp(ctx context.Context) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	count := 0
+	var (
+		newEntries = make(map[string]SessionModel)
+		now        = time.Now().Unix()
+	)
 
 	for key, entry := range s.entries {
-		if entry.Expires < time.Now().Unix() {
-			delete(s.entries, key)
-
-			count++
+		if entry.Expires > now {
+			newEntries[key] = entry
 		}
 	}
 
-	if count == 0 {
-		return nil
-	}
+	s.entries = newEntries
 
 	err = s.writeAfterRead(ctx)
 	if err != nil {
@@ -201,7 +183,8 @@ func (s *Session) readForWrite(ctx context.Context) error {
 }
 
 // writeAfterRead writes the current session data to the store.
-// Note: This function assumes that the store is locked.
+// Note: This function assumes that the store is locked!
+// Note: This function does not release the lock!
 func (s *Session) writeAfterRead(ctx context.Context) error {
 	data, err := s.getData()
 	if err != nil {

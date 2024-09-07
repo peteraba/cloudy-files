@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -18,152 +17,153 @@ type App struct {
 	sessionService *service.Session
 	userService    *service.User
 	fileService    *service.File
+	display        Display
 	logger         *log.Logger
+	help           string
 }
 
+const Help = "TODO..."
+
 // NewApp creates a new App instance.
-func NewApp(sessionService *service.Session, userService *service.User, fileService *service.File, logger *log.Logger) *App {
+func NewApp(sessionService *service.Session, userService *service.User, fileService *service.File, display Display, logger *log.Logger) *App {
 	return &App{
 		sessionService: sessionService,
 		userService:    userService,
 		fileService:    fileService,
+		display:        display,
 		logger:         logger,
+		help:           Help,
 	}
 }
 
 // Route routes the command to the appropriate method.
-func (a *App) Route(subCommand string, args ...string) {
+func (a *App) Route(ctx context.Context, subCommand string, args ...string) {
 	start := time.Now()
 
 	switch subCommand {
 	case "createUser":
-		a.CreateUser(args...)
+		a.CreateUser(ctx, args...)
 	case "hashPassword":
-		a.HashPassword(args...)
+		a.HashPassword(ctx, args...)
 	case "login":
-		a.Login(args...)
+		a.Login(ctx, args...)
 	case "checkPassword":
-		a.CheckPassword(args...)
+		a.CheckPassword(ctx, args...)
 	case "checkPasswordHash":
-		a.CheckPasswordHash(args...)
+		a.CheckPasswordHash(ctx, args...)
 	case "checkSession":
-		a.CheckSession(args...)
+		a.CheckSession(ctx, args...)
 	case "cleanUp":
-		a.CleanUp()
+		a.CleanUp(ctx)
 	case "upload":
-		a.Upload(args...)
+		a.Upload(ctx, args...)
 	case "size":
-		a.Size(args...)
+		a.Size(ctx, args...)
 	default:
-		a.logger.Error().Str("subCommand", subCommand).Msg("Unknown subCommand")
+		a.display.ExitWithHelp("Unknown subcommand: "+subCommand, a.help)
 	}
 
 	a.logger.Info().Dur("duration", time.Since(start)).Msg("Execution time")
 }
 
-// Help prints the help message.
-func (a *App) Help() {
-	fmt.Println("TODO...")
-}
-
 // HashPassword hashes a password.
-func (a *App) HashPassword(args ...string) {
+func (a *App) HashPassword(ctx context.Context, args ...string) {
 	if len(args) < 1 {
-		a.ExitWithHelp("Please provide a password to hashPassword")
+		a.display.ExitWithHelp("Please provide a password.", a.help)
 	}
 
 	password := args[0]
 
-	hash, err := a.userService.HashPassword(context.Background(), password)
+	hash, err := a.userService.HashPassword(ctx, password)
 	if err != nil {
-		a.Exit("Failed to hash password", err)
+		a.display.Exit("Failed to hash password.", err)
 	}
 
-	a.logger.Info().Str("hash", hash).Msg("Password hashed")
+	a.display.Println("Hashed password:", hash)
 }
 
 // Login logs in a user.
-func (a *App) Login(args ...string) {
+func (a *App) Login(ctx context.Context, args ...string) {
 	if len(args) < 2 {
-		a.ExitWithHelp("Please provide a user name and a password to log in with")
+		a.display.ExitWithHelp("Please provide a user name and a password to log in with.", a.help)
 	}
 
 	userName := args[0]
 	pass := args[1]
 
-	sessionModel, err := a.userService.Login(context.Background(), userName, pass)
+	sessionModel, err := a.userService.Login(ctx, userName, pass)
 	if err != nil {
-		a.Exit("Login failed", err)
+		a.display.Exit("Login failed.", err)
 	}
 
-	a.logger.Info().Str("hash", sessionModel.Hash).Msg("Session started")
+	a.display.Println("Session started:", sessionModel.Hash)
 }
 
 // CheckPassword checks if a password matches the password hash stored for a user.
-func (a *App) CheckPassword(args ...string) {
+func (a *App) CheckPassword(ctx context.Context, args ...string) {
 	if len(args) < 1 {
-		a.ExitWithHelp("Please provide a user name and a password to check")
+		a.display.ExitWithHelp("Please provide a user name and a password to check", a.help)
 	}
 
 	userName := args[0]
 	pass := args[1]
 
-	err := a.userService.CheckPassword(context.Background(), userName, pass)
+	err := a.userService.CheckPassword(ctx, userName, pass)
 	if err != nil {
-		a.Exit("Password does not match", err)
+		a.display.Exit("Password received does not match the user password.", err)
 	}
 
-	a.logger.Info().Msg("Password matches")
+	a.display.Println("Password matches.")
 }
 
 // CheckPasswordHash checks if a password matches a password hash.
-func (a *App) CheckPasswordHash(args ...string) {
+func (a *App) CheckPasswordHash(ctx context.Context, args ...string) {
 	if len(args) < 2 {
-		a.ExitWithHelp("Please provide a password and a hashPassword to check")
+		a.display.ExitWithHelp("Please provide a password and a hashPassword to check.", a.help)
 	}
 
 	password := args[0]
 	hash := args[1]
 
-	err := a.userService.CheckPasswordHash(context.Background(), password, hash)
+	err := a.userService.CheckPasswordHash(ctx, password, hash)
 	if err != nil {
-		a.Exit("Password does not match", err)
+		a.display.Exit("Password does not match the hash received.", err)
 	}
 
-	a.logger.Info().Msg("Password matches")
+	a.display.Println("Password matches the hash received.")
 }
 
 // CheckSession checks if a session exists.
-func (a *App) CheckSession(args ...string) {
+func (a *App) CheckSession(ctx context.Context, args ...string) {
 	if len(args) < 2 {
-		a.ExitWithHelp("Please provide a name and a hashPassword to check")
+		a.display.ExitWithHelp("Please provide a name and a hashPassword to check.", a.help)
 	}
 
 	name := args[0]
 	hash := args[1]
 
-	ok, err := a.sessionService.Check(context.Background(), name, hash)
+	err := a.sessionService.Check(ctx, name, hash)
 	if err != nil {
-		a.Exit("Session does not exist", err)
+		a.display.Exit("Session does not exist.", err)
 	}
 
-	a.logger.Info().Bool("ok", ok).Msg("Session checked")
+	a.display.Println("Session exists.")
 }
 
 // CleanUp cleans up all sessions.
-func (a *App) CleanUp() {
-	err := a.sessionService.CleanUp(context.Background())
+func (a *App) CleanUp(ctx context.Context) {
+	err := a.sessionService.CleanUp(ctx)
 	if err != nil {
-		a.Exit("Session cleanup failed", err)
+		a.display.Exit("Session cleanup failed.", err)
 	}
 
-	a.logger.Info().Msg("Cleaned up")
+	a.display.Println("Session data is cleaned up.")
 }
 
 // CreateUser creates a user.
-func (a *App) CreateUser(args ...string) {
+func (a *App) CreateUser(ctx context.Context, args ...string) {
 	if len(args) < 4 {
-		a.ExitWithHelp("Please provide at least name, email, password to create a user")
+		a.display.ExitWithHelp("Please provide at least name, email, password to create a user.", a.help)
 	}
 
 	name := args[0]
@@ -181,25 +181,25 @@ func (a *App) CreateUser(args ...string) {
 		access = args[4:]
 	}
 
-	userModel, err := a.userService.Create(context.Background(), name, email, password, isAdmin, access)
+	userModel, err := a.userService.Create(ctx, name, email, password, isAdmin, access)
 	if err != nil {
-		a.Exit("User creation failed", err)
+		a.display.Exit("User creation failed.", err)
 	}
 
-	a.logger.Info().Str("name", userModel.Name).Msg("User created")
+	a.display.Println("User created:", userModel.Name)
 }
 
 // Upload uploads a file.
-func (a *App) Upload(args ...string) {
+func (a *App) Upload(ctx context.Context, args ...string) {
 	if len(args) < 1 {
-		a.ExitWithHelp("Please provide the path of the file to store and at least one access label")
+		a.display.ExitWithHelp("Please provide the path of the file to store and at least one access label.", a.help)
 	}
 
 	filePath := args[0]
 
 	stats, err := os.Stat(filePath)
 	if err != nil {
-		a.Exit("File could not be found", err)
+		a.display.Exit("File could not be found.", err)
 	}
 
 	var access []string
@@ -207,62 +207,39 @@ func (a *App) Upload(args ...string) {
 		access = args[1:]
 	}
 
+	// Note: Testing this case is very tricky (if not impossible) due to the os.Stat having to pass.
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		a.Exit("File could not be read", err)
+		a.display.Exit("File could not be read.", err)
 	}
 
-	fileModel, err := a.fileService.Upload(context.Background(), stats.Name(), data, access)
+	fileModel, err := a.fileService.Upload(ctx, stats.Name(), data, access)
 	if err != nil {
-		a.Exit("File could not be stored", err)
+		a.display.Exit("File could not be stored.", err)
 	}
 
-	a.logger.Info().Str("name", fileModel.Name).Msg("File stored")
+	a.display.Println("File stored:", fileModel.Name)
 }
 
 // Size retrieves a file and displays its size.
-func (a *App) Size(args ...string) {
+func (a *App) Size(ctx context.Context, args ...string) {
 	if len(args) < 1 {
-		a.ExitWithHelp("Please provide the path of the file to check the size of")
+		a.display.ExitWithHelp("Please provide the path of the file to check the size of.", a.help)
 	}
 
 	filePath := args[0]
-
-	stats, err := os.Stat(filePath)
-	if err != nil {
-		a.Exit("File could not be found", err)
-	}
 
 	var access []string
 	if len(args) >= 1 {
 		access = args[1:]
 	}
 
-	data, err := a.fileService.Retrieve(context.Background(), stats.Name(), access)
+	data, err := a.fileService.Retrieve(ctx, filePath, access)
 	if err != nil {
-		a.Exit("File could not be read", err)
+		a.display.Exit("File could not be read: "+filePath+", err:", err)
 	}
 
 	fileSize := util.FileSizeFromSize(len(data))
 
-	a.logger.Info().
-		Str("name", stats.Name()).
-		Str("size", fileSize.String()).
-		Msg("File size retrieved")
-}
-
-// ExitWithHelp exits the application with a help message.
-func (a *App) ExitWithHelp(msg string) {
-	a.logger.Error().Msg(msg)
-
-	a.Help()
-
-	os.Exit(1)
-}
-
-// Exit exits the application after displaying a message and an error.
-func (a *App) Exit(msg string, err error) {
-	a.logger.Error().Err(err).Msg(msg)
-
-	os.Exit(1)
+	a.display.Println("File size:", fileSize.String())
 }

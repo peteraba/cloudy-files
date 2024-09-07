@@ -206,7 +206,7 @@ linters-settings:
     #
     # Default: []
     ignore-decls:
-      - t testing.T
+      - t test.T
       - f *foo.Bar
       - e error
       - i int
@@ -314,6 +314,7 @@ issues:
       linters:
         - dupl
         - exhaustruct
+        - forcetypeassert
         - funlen
         - gochecknoglobals
         - gocognit
@@ -321,4 +322,6 @@ issues:
         - gocritic
         - gocyclo
         - maintidx
+        - predeclared
+        - revive
         - wsl

@@ -1,4 +1,4 @@
-package http
+package web
 
 import (
 	"encoding/json"
@@ -10,26 +10,26 @@ import (
 )
 
 const (
-	headerContentType        = "Content-Type"
-	headerAccept             = "Accept"
-	headerContentLength      = "Content-Length"
-	headerContentTypeOptions = "X-Content-Type-Options"
+	HeaderContentType        = "Content-Type"
+	HeaderAccept             = "Accept"
+	HeaderContentLength      = "Content-Length"
+	HeaderContentTypeOptions = "X-Content-Type-Options"
 )
 
 const (
-	contentTypeJSON = "application/json"
-	contentTypeText = "text/plain"
-	contentTypeHTML = "text/html"
+	ContentTypeJSON = "application/json"
+	ContentTypeText = "text/plain"
+	ContentTypeHTML = "text/html"
 )
 
-var supportedTypes = []string{contentTypeJSON, contentTypeHTML} //nolint:gochecknoglobals // This is a constant.
+var supportedTypes = []string{ContentTypeJSON, ContentTypeHTML} //nolint:gochecknoglobals // This is a constant.
 
 func isJSONRequest(r *http.Request) bool {
-	accept := r.Header.Get(headerAccept)
+	accept := r.Header.Get(HeaderAccept)
 
 	contentType := negotiateContentType(accept, supportedTypes)
 
-	return contentType == contentTypeJSON
+	return contentType == ContentTypeJSON
 }
 
 func negotiateContentType(accept string, supportedTypes []string) string {
@@ -56,7 +56,7 @@ func negotiateContentType(accept string, supportedTypes []string) string {
 func (a *App) error(w http.ResponseWriter, r *http.Request, err error) {
 	a.logger.Error().Err(err).Msg("Error")
 
-	httpError := apperr.GetHTTPError(err)
+	httpError := apperr.GetProblem(err)
 
 	header := w.Header()
 
@@ -67,9 +67,9 @@ func (a *App) error(w http.ResponseWriter, r *http.Request, err error) {
 	// We don't delete Content-Encoding, because some middleware sets
 	// Content-Encoding: gzip and wraps the ResponseWriter to compress on-the-fly.
 	// See https://go.dev/issue/66343.
-	header.Del(headerContentLength)
+	header.Del(HeaderContentLength)
 
-	header.Set(headerContentTypeOptions, "nosniff")
+	header.Set(HeaderContentTypeOptions, "nosniff")
 	w.WriteHeader(httpError.Status)
 
 	if isJSONRequest(r) {
@@ -80,11 +80,11 @@ func (a *App) error(w http.ResponseWriter, r *http.Request, err error) {
 }
 
 func (a *App) nobody(w http.ResponseWriter) {
-	w.Header().Set(headerContentType, contentTypeText+"; charset=utf-8")
+	w.Header().Set(HeaderContentType, ContentTypeText+"; charset=utf-8")
 }
 
 func (a *App) json(w http.ResponseWriter, content interface{}) {
-	w.Header().Set(headerContentType, contentTypeJSON+"; charset=utf-8")
+	w.Header().Set(HeaderContentType, ContentTypeJSON+"; charset=utf-8")
 
 	if content == nil {
 		return
@@ -106,10 +106,10 @@ func (a *App) json(w http.ResponseWriter, content interface{}) {
 }
 
 func (a *App) html(w http.ResponseWriter, content interface{}) {
-	w.Header().Set(headerContentType, contentTypeHTML+"; charset=utf-8")
+	w.Header().Set(HeaderContentType, ContentTypeHTML+"; charset=utf-8")
 
 	body := fmt.Sprint(content)
-	if httpError, ok := content.(*apperr.HTTPError); ok {
+	if httpError, ok := content.(*apperr.Problem); ok {
 		body = fmt.Sprintf(`
   <h3>Error</h3>
 <table>

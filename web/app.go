@@ -1,7 +1,8 @@
-package http
+package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"github.com/phuslu/log"
 
 	"github.com/peteraba/cloudy-files/apperr"
+	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/service"
 )
 
@@ -138,51 +140,64 @@ func (a *App) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 // GetUser retrieves a user.
 func (a *App) GetUser(w http.ResponseWriter, r *http.Request) {
-	_ = r
-
 	a.error(w, r, apperr.ErrNotImplemented)
 }
 
 // CreateUser creates a user.
 func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
+	var user repo.UserModel
 
-	username := query.Get(paramUsername)
-	password := query.Get(paramPassword)
-	email := query.Get(paramEmail)
-	isAdmin := false
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		a.error(w, r, fmt.Errorf("failed to decode user, err: %w", apperr.ErrBadRequest(err)))
 
-	switch strings.ToLower(query.Get(paramIsAdmin)) {
-	case "true", "1", "yes", "y":
-		isAdmin = true
+		return
 	}
 
-	var access []string
-	if query.Get(paramAccess) != "" {
-		access = strings.Split(query.Get(paramAccess), ",")
-	}
-
-	userModel, err := a.userService.Create(r.Context(), username, email, password, isAdmin, access)
+	userModel, err := a.userService.Create(r.Context(), user.Name, user.Email, user.Password, user.IsAdmin, user.Access)
 	if err != nil {
 		a.error(w, r, err)
 	}
 
-	a.logger.Info().Msg("User created")
+	a.logger.Info().Str("username", user.Name).Msg("User created.")
 
-	a.json(w, userModel)
+	if isJSONRequest(r) {
+		a.json(w, userModel)
+
+		return
+	}
+
+	userHTML := []string{
+		fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>", "name", userModel.Name),
+		fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>", "email", userModel.Email),
+	}
+
+	tmpl := fmt.Sprintf(
+		`<table>
+	<thead>
+		<tr>
+			<th>Name</th>
+			<th>Access</th>
+		</tr>
+	</thead>
+	<tbody>
+%s
+	</tbody>
+</table>
+`,
+		strings.Join(userHTML, ""),
+	)
+
+	a.html(w, tmpl)
 }
 
 // UpdateUser updates a user.
 func (a *App) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	_ = r
-
 	a.error(w, r, apperr.ErrNotImplemented)
 }
 
 // DeleteUser deletes a user.
 func (a *App) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	_ = r
-
 	a.error(w, r, apperr.ErrNotImplemented)
 }
 
@@ -235,8 +250,6 @@ func (a *App) ListFiles(w http.ResponseWriter, r *http.Request) {
 
 // DeleteFile deletes a file.
 func (a *App) DeleteFile(w http.ResponseWriter, r *http.Request) {
-	_ = r
-
 	a.error(w, r, apperr.ErrNotImplemented)
 }
 
@@ -264,21 +277,15 @@ func (a *App) Login(w http.ResponseWriter, r *http.Request) {
 
 // UploadFile uploads a file.
 func (a *App) UploadFile(w http.ResponseWriter, r *http.Request) {
-	_ = r
-
 	a.error(w, r, apperr.ErrNotImplemented)
 }
 
 // RetrieveFile retrieves a file.
 func (a *App) RetrieveFile(w http.ResponseWriter, r *http.Request) {
-	_ = r
-
 	a.error(w, r, apperr.ErrNotImplemented)
 }
 
 // Home is the default route.
 func (a *App) Home(w http.ResponseWriter, r *http.Request) {
-	_ = r
-
 	a.error(w, r, apperr.ErrNotImplemented)
 }

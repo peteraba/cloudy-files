@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/peteraba/cloudy-files/appconfig"
-	"github.com/peteraba/cloudy-files/compose"
+	composeTest "github.com/peteraba/cloudy-files/compose/test"
 	"github.com/peteraba/cloudy-files/store"
 )
 
@@ -28,7 +28,7 @@ func TestS3_Write_and_Read(t *testing.T) {
 		awsConfig, err := config.LoadDefaultConfig(ctx)
 		require.NoError(t, err)
 
-		factory := compose.NewTestFactory(appconfig.NewConfig()).SetAWS(awsConfig)
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig()).SetAWS(awsConfig)
 
 		sut := store.NewS3(factory.GetS3Client(), factory.GetLogger(), bucket, path)
 
@@ -170,7 +170,7 @@ func TestS3_ReadForWrite_and_WriteLocked(t *testing.T) {
 		awsConfig, err := config.LoadDefaultConfig(ctx)
 		require.NoError(t, err)
 
-		factory := compose.NewTestFactory(appconfig.NewConfig()).SetAWS(awsConfig)
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig()).SetAWS(awsConfig)
 
 		sut := store.NewS3(factory.GetS3Client(), factory.GetLogger(), bucket, path)
 

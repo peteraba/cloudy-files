@@ -28,8 +28,16 @@ var ErrInvalidArgument = errors.New("invalid argument")
 // ErrNotImplemented is returned when a method is not implemented.
 var ErrNotImplemented = errors.New("not implemented")
 
-// HTTPError represents a JSON error response.
-type HTTPError struct {
+// errBadRequest is returned when a method is not implemented.
+var errBadRequest = errors.New("bad request")
+
+// ErrBadRequest returns a bad request error.
+func ErrBadRequest(err error) error {
+	return fmt.Errorf("%s, err: %w", err.Error(), errBadRequest)
+}
+
+// Problem represents a JSON error response.
+type Problem struct { //nolint:errname // This is Zalando standard naming
 	Type   string `json:"type,omitempty"`
 	Title  string `json:"title"`
 	Status int    `json:"status"`
@@ -37,16 +45,21 @@ type HTTPError struct {
 }
 
 // Error returns the error message.
-func (e *HTTPError) Error() string {
+func (e *Problem) Error() string {
 	return fmt.Sprintf("%d %s %s", e.Status, e.Title, e.Detail)
 }
 
-// GetHTTPError returns an error response.
-func GetHTTPError(err error) *HTTPError {
-	detail := strings.TrimRight(strings.Title(err.Error()), ".") + "." //nolint:staticcheck // No need for unicode punctuation
+// GetProblem returns an error response.
+func GetProblem(err error) *Problem {
+	firstPart := err.Error()
+	if idx := strings.Index(firstPart, ":"); idx > 0 {
+		firstPart = firstPart[:idx]
+	}
+
+	detail := strings.TrimRight(strings.Title(firstPart), ".") + "." //nolint:staticcheck // No need for unicode punctuation
 
 	if errors.Is(err, ErrAccessDenied) {
-		return &HTTPError{
+		return &Problem{
 			Type:   "",
 			Title:  "Access denied",
 			Status: http.StatusForbidden,
@@ -55,7 +68,7 @@ func GetHTTPError(err error) *HTTPError {
 	}
 
 	if errors.Is(err, ErrNotFound) {
-		return &HTTPError{
+		return &Problem{
 			Type:   "",
 			Title:  "Not found",
 			Status: http.StatusNotFound,
@@ -64,15 +77,24 @@ func GetHTTPError(err error) *HTTPError {
 	}
 
 	if errors.Is(err, ErrNotImplemented) {
-		return &HTTPError{
+		return &Problem{
 			Type:   "",
-			Title:  "Not found",
+			Title:  "Not implemented",
 			Status: http.StatusNotFound,
 			Detail: detail,
 		}
 	}
 
-	return &HTTPError{
+	if errors.Is(err, errBadRequest) {
+		return &Problem{
+			Type:   "",
+			Title:  "Bad request",
+			Status: http.StatusBadRequest,
+			Detail: detail,
+		}
+	}
+
+	return &Problem{
 		Type:   "",
 		Title:  "Internal error",
 		Status: http.StatusInternalServerError,

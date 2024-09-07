@@ -16,7 +16,7 @@ const storeTypeS3 = "s3"
 
 const (
 	commandCli  = "cli"
-	commandHTTP = "http"
+	commandHTTP = "web"
 )
 
 func main() {
@@ -33,7 +33,7 @@ func main() {
 	switch os.Args[1] {
 	case commandCli:
 		cliApp := factory.CreateCliApp()
-		cliApp.Route(os.Args[1], os.Args[2:]...)
+		cliApp.Route(ctx, os.Args[1], os.Args[2:]...)
 	case commandHTTP:
 		router := factory.CreateHTTPApp()
 		mux := router.Route()

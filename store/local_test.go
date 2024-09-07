@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/peteraba/cloudy-files/appconfig"
-	"github.com/peteraba/cloudy-files/compose"
+	composeTest "github.com/peteraba/cloudy-files/compose/test"
 	"github.com/peteraba/cloudy-files/store"
 )
 
@@ -22,7 +22,7 @@ func TestLocal_Write_and_Read(t *testing.T) {
 	setup := func(t *testing.T, fileName string, data []byte) *store.Local {
 		t.Helper()
 
-		factory := compose.NewTestFactory(appconfig.NewConfig())
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
 		logger := factory.GetLogger()
 		localStore := store.NewLocal(logger, fileName)
 
@@ -162,7 +162,7 @@ func TestLocal_ReadForWrite_and_WriteLocked(t *testing.T) {
 	setup := func(t *testing.T, fileName string, data []byte) (*store.Local, *log.Logger) { //nolint:unparam // it makes debugging easier if needed
 		t.Helper()
 
-		factory := compose.NewTestFactory(appconfig.NewConfig())
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
 		logger := factory.GetLogger()
 		sut := store.NewLocal(logger, fileName)
 

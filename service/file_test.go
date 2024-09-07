@@ -11,7 +11,9 @@ import (
 	"github.com/peteraba/cloudy-files/appconfig"
 	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/compose"
+	composeTest "github.com/peteraba/cloudy-files/compose/test"
 	"github.com/peteraba/cloudy-files/filesystem"
+	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/service"
 	"github.com/peteraba/cloudy-files/store"
 	"github.com/peteraba/cloudy-files/util"
@@ -26,7 +28,7 @@ func TestFile_Upload(t *testing.T) {
 	setup := func(t *testing.T, fileStoreSpy, fsStoreSpy *util.Spy) *service.File {
 		t.Helper()
 
-		factory := compose.NewTestFactory(appconfig.NewConfig())
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
 
 		factory.SetFileSystem(filesystem.NewInMemory(fsStoreSpy))
 		factory.SetStore(store.NewInMemory(fileStoreSpy), compose.FileStore)
@@ -80,7 +82,7 @@ func TestFile_Retrieve(t *testing.T) {
 	unusedSpy := util.NewSpy()
 	ctx := context.Background()
 
-	setup := func(t *testing.T, fileStoreSpy, fsStoreSpy *util.Spy, fileStoreData []byte) *service.File {
+	setup := func(t *testing.T, fileStoreSpy, fsStoreSpy *util.Spy, fileStoreData repo.FileModelMap) *service.File {
 		t.Helper()
 
 		fsStore := filesystem.NewInMemory(fsStoreSpy)
@@ -88,11 +90,11 @@ func TestFile_Retrieve(t *testing.T) {
 		fileStore := store.NewInMemory(fileStoreSpy)
 
 		if fileStoreData != nil {
-			err := fileStore.Write(ctx, fileStoreData)
+			err := fileStore.Marshal(ctx, fileStoreData)
 			require.NoError(t, err)
 		}
 
-		factory := compose.NewTestFactory(appconfig.NewConfig())
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
 
 		factory.SetFileSystem(fsStore)
 		factory.SetStore(fileStore, compose.FileStore)
@@ -118,24 +120,6 @@ func TestFile_Retrieve(t *testing.T) {
 		assert.ErrorIs(t, err, assert.AnError)
 	})
 
-	t.Run("fail when store is invalid", func(t *testing.T) {
-		t.Parallel()
-
-		// data
-		stubFileName := "foo.txt"
-
-		// setup
-		sut := setup(t, unusedSpy, unusedSpy, []byte("invalid json"))
-
-		// execute
-		data, err := sut.Retrieve(ctx, stubFileName, []string{})
-		require.Error(t, err)
-		require.Nil(t, data)
-
-		// assert
-		assert.ErrorContains(t, err, "error unmarshaling data")
-	})
-
 	t.Run("fail if retrieving the file fails", func(t *testing.T) {
 		t.Parallel()
 
@@ -144,7 +128,7 @@ func TestFile_Retrieve(t *testing.T) {
 		stubAccess := []string{"foobar"}
 
 		// mock
-		sut := setup(t, unusedSpy, unusedSpy, []byte("{}"))
+		sut := setup(t, unusedSpy, unusedSpy, nil)
 
 		// execute
 		data, err := sut.Retrieve(ctx, stubFileName, stubAccess)
@@ -165,7 +149,7 @@ func TestFile_Retrieve(t *testing.T) {
 		// mock
 		fsStoreSpy := util.NewSpy()
 		fsStoreSpy.Register("Read", 0, assert.AnError, stubFileName)
-		sut := setup(t, unusedSpy, fsStoreSpy, []byte(`{"foo.txt":{"name":"foo.txt","access":["foobar"]}}`))
+		sut := setup(t, unusedSpy, fsStoreSpy, repo.FileModelMap{"foo.txt": {Name: "foo.txt", Access: []string{"foobar"}}})
 
 		// execute
 		data, err := sut.Retrieve(ctx, stubFileName, stubAccess)
@@ -183,19 +167,22 @@ func TestFile_Upload_and_Get(t *testing.T) {
 	unusedSpy := util.NewSpy()
 	ctx := context.Background()
 
-	setup := func(t *testing.T, fileStoreSpy, fsStoreSpy *util.Spy, fileStoreData []byte) *service.File {
+	setup := func(t *testing.T, fileStoreSpy, fsStoreSpy *util.Spy, fileStoreData repo.FileModelMap) *service.File {
 		t.Helper()
 
-		fsStore := filesystem.NewInMemory(fsStoreSpy)
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
 
-		fileStore := store.NewInMemory(fileStoreSpy)
-		err := fileStore.Write(ctx, fileStoreData)
-		require.NoError(t, err)
+		{
+			fsStore := filesystem.NewInMemory(fsStoreSpy)
+			factory.SetFileSystem(fsStore)
+		}
 
-		factory := compose.NewTestFactory(appconfig.NewConfig())
-
-		factory.SetFileSystem(fsStore)
-		factory.SetStore(fileStore, compose.FileStore)
+		{
+			fileStore := store.NewInMemory(fileStoreSpy)
+			err := fileStore.Marshal(ctx, fileStoreData)
+			require.NoError(t, err)
+			factory.SetStore(fileStore, compose.FileStore)
+		}
 
 		return factory.CreateFileService()
 	}
@@ -209,7 +196,7 @@ func TestFile_Upload_and_Get(t *testing.T) {
 		stubData := gofakeit.HipsterSentence(10)
 
 		// setup
-		sut := setup(t, unusedSpy, unusedSpy, nil)
+		sut := setup(t, unusedSpy, unusedSpy, repo.FileModelMap{})
 
 		// execute
 		fileModel, err := sut.Upload(ctx, stubFileName, []byte(stubData), stubAccess)
@@ -241,7 +228,7 @@ func TestFile_Upload_and_Retrieve(t *testing.T) {
 		err := fileStore.Write(ctx, fileStoreData)
 		require.NoError(t, err)
 
-		factory := compose.NewTestFactory(appconfig.NewConfig())
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
 
 		factory.SetFileSystem(fsStore)
 		factory.SetStore(fileStore, compose.FileStore)

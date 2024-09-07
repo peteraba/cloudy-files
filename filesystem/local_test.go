@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/peteraba/cloudy-files/appconfig"
-	"github.com/peteraba/cloudy-files/compose"
+	composeTest "github.com/peteraba/cloudy-files/compose/test"
 	"github.com/peteraba/cloudy-files/filesystem"
 )
 
@@ -22,7 +22,7 @@ func TestLocal_Write_and_Read(t *testing.T) {
 	setup := func(t *testing.T, path string) *filesystem.Local {
 		t.Helper()
 
-		factory := compose.NewTestFactory(appconfig.NewConfig())
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
 		logger := factory.GetLogger()
 
 		path = filepath.Join("/tmp", path)

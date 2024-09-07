@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/phuslu/log"
 
+	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/repo"
 )
 
@@ -24,23 +26,28 @@ func NewSession(sessionRepo SessionRepo, logger log.Logger) *Session {
 }
 
 // Check checks if a session is valid.
-func (s *Session) Check(ctx context.Context, name, hash string) (bool, error) {
-	ok, err := s.repo.Check(ctx, name, hash)
+func (s *Session) Check(ctx context.Context, name, hash string) error {
+	_, err := s.Get(ctx, name, hash)
 	if err != nil {
-		return false, fmt.Errorf("failed to check session. name: %s, hash: %s: %w", name, hash, err)
+		return fmt.Errorf("failed to check session, err: %w", err)
 	}
 
-	return ok, nil
+	return nil
 }
 
 // Get checks if a session is valid.
 func (s *Session) Get(ctx context.Context, name, hash string) (repo.SessionModel, error) {
-	model, err := s.repo.Get(ctx, name, hash)
+	session, err := s.repo.Get(ctx, name)
 	if err != nil {
-		return model, fmt.Errorf("failed to check session. name: %s, hash: %s: %w", name, hash, err)
+		return repo.SessionModel{}, fmt.Errorf("failed to check session. name: %s, err: %w", name, err)
 	}
 
-	return model, nil
+	now := time.Now().Unix()
+	if session.Expires < now || session.Hash != hash {
+		return repo.SessionModel{}, fmt.Errorf("invalid session. name: %s, err: %w", name, apperr.ErrAccessDenied)
+	}
+
+	return session, nil
 }
 
 // CleanUp cleans up sessions.

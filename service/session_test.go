@@ -9,7 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/peteraba/cloudy-files/appconfig"
+	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/compose"
+	composeTest "github.com/peteraba/cloudy-files/compose/test"
+	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/service"
 	"github.com/peteraba/cloudy-files/store"
 	"github.com/peteraba/cloudy-files/util"
@@ -24,7 +27,7 @@ func TestSession_Check(t *testing.T) {
 	setup := func(t *testing.T, sessionStoreSpy, userStoreSpy *util.Spy) (*service.Session, *service.User) {
 		t.Helper()
 
-		factory := compose.NewTestFactory(appconfig.NewConfig())
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
 
 		factory.SetStore(store.NewInMemory(sessionStoreSpy), compose.SessionStore)
 		factory.SetStore(store.NewInMemory(userStoreSpy), compose.UserStore)
@@ -46,15 +49,14 @@ func TestSession_Check(t *testing.T) {
 		sut, _ := setup(t, sessionStoreSpy, unusedSpy)
 
 		// execute
-		result, err := sut.Check(ctx, stubPassword, stubHash)
+		err := sut.Check(ctx, stubPassword, stubHash)
 		require.Error(t, err)
 
 		// assert
-		assert.False(t, result)
 		assert.ErrorIs(t, err, assert.AnError)
 	})
 
-	t.Run("session is invalid without a login", func(t *testing.T) {
+	t.Run("fail when session is checked without login", func(t *testing.T) {
 		t.Parallel()
 
 		// data
@@ -72,11 +74,11 @@ func TestSession_Check(t *testing.T) {
 		require.NotEmpty(t, userModel)
 
 		// execute
-		exists, err := sut.Check(ctx, stubName, stubHash)
+		err = sut.Check(ctx, stubName, stubHash)
+		require.Error(t, err)
 
 		// assert
-		require.NoError(t, err)
-		assert.False(t, exists)
+		assert.ErrorIs(t, err, apperr.ErrNotFound)
 	})
 
 	t.Run("logged in user has valid session", func(t *testing.T) {
@@ -100,11 +102,10 @@ func TestSession_Check(t *testing.T) {
 		require.NotEmpty(t, sessionModel)
 
 		// execute
-		exists, err := sut.Check(ctx, stubName, sessionModel.Hash)
+		err = sut.Check(ctx, stubName, sessionModel.Hash)
 
 		// assert
 		require.NoError(t, err)
-		assert.True(t, exists)
 	})
 }
 
@@ -114,14 +115,14 @@ func TestSession_CleanUp(t *testing.T) {
 	unusedSpy := util.NewSpy()
 	ctx := context.Background()
 
-	setup := func(t *testing.T, sessionStoreSpy *util.Spy, sessionData []byte) *service.Session {
+	setup := func(t *testing.T, sessionStoreSpy *util.Spy, sessionData repo.SessionModelMap) *service.Session {
 		t.Helper()
 
 		sessionStore := store.NewInMemory(sessionStoreSpy)
-		err := sessionStore.Write(ctx, sessionData)
+		err := sessionStore.Marshal(ctx, sessionData)
 		require.NoError(t, err)
 
-		factory := compose.NewTestFactory(appconfig.NewConfig())
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
 
 		factory.SetStore(sessionStore, compose.SessionStore)
 
@@ -151,9 +152,7 @@ func TestSession_CleanUp(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		storeData := []byte(`{"peter":{"hash":"foobar","expires":0}}`)
-
-		sut := setup(t, unusedSpy, storeData)
+		sut := setup(t, unusedSpy, repo.SessionModelMap{"peter": {Hash: "foobar", Expires: 0}})
 
 		// execute
 		err := sut.CleanUp(ctx)

@@ -2,7 +2,9 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/peteraba/cloudy-files/util"
@@ -21,6 +23,11 @@ func NewInMemory(spy *util.Spy) *InMemory {
 		data: make([]byte, 0),
 		spy:  spy,
 	}
+}
+
+// GetSpy returns the spy.
+func (i *InMemory) GetSpy() *util.Spy {
+	return i.spy
 }
 
 // Read reads the file without acquiring the lock.
@@ -68,6 +75,17 @@ func (i *InMemory) Write(ctx context.Context, data []byte) error {
 	return nil
 }
 
+// Marshal marshals the raw data and stores it.
+// This is designed to make writing tests simpler.
+func (i *InMemory) Marshal(ctx context.Context, raw interface{}) error {
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return fmt.Errorf("error marshaling data: %w", err)
+	}
+
+	return i.Write(ctx, data)
+}
+
 var ErrLockDoesNotExist = errors.New("lock not locked")
 
 // WriteLocked writes data to the file after acquiring a lock
@@ -79,7 +97,7 @@ func (i *InMemory) WriteLocked(_ context.Context, data []byte) error {
 	}
 
 	if i.m.TryLock() {
-		defer i.m.Unlock()
+		i.m.Unlock()
 
 		return ErrLockDoesNotExist
 	}
@@ -89,7 +107,7 @@ func (i *InMemory) WriteLocked(_ context.Context, data []byte) error {
 	return nil
 }
 
-// waitForLock waits for the lock file to be removed by any other process
+// waitForLock waits for the lock to be removed by any other process
 // which may hold it. It retries for a maximum of N times.
 func (i *InMemory) waitForLock() {
 	i.m.Lock()

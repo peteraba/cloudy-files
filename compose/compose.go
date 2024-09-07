@@ -12,11 +12,11 @@ import (
 	"github.com/peteraba/cloudy-files/appconfig"
 	"github.com/peteraba/cloudy-files/cli"
 	"github.com/peteraba/cloudy-files/filesystem"
-	"github.com/peteraba/cloudy-files/http"
 	"github.com/peteraba/cloudy-files/password"
 	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/service"
 	"github.com/peteraba/cloudy-files/store"
+	"github.com/peteraba/cloudy-files/web"
 )
 
 // DataType represents the type of data stored in a store.
@@ -39,6 +39,7 @@ type Factory struct {
 	passwordHasherInstance service.PasswordHasher
 	s3Client               *s3.Client
 	appConfig              *appconfig.Config
+	display                cli.Display
 	logger                 *log.Logger
 }
 
@@ -52,18 +53,10 @@ func NewFactory(appConfig *appconfig.Config) *Factory {
 		stores:                 [...]repo.Store{nil, nil, nil},
 		passwordHasherInstance: nil,
 		s3Client:               nil,
-		logger:                 &log.DefaultLogger,
 		appConfig:              appConfig,
+		display:                nil,
+		logger:                 &log.DefaultLogger,
 	}
-}
-
-// NewTestFactory creates a new factory for testing.
-func NewTestFactory(appConfig *appconfig.Config) *Factory {
-	f := NewFactory(appConfig)
-
-	f.SetLogLevel(log.PanicLevel)
-
-	return f
 }
 
 func (f *Factory) SetLogLevel(level log.Level) {
@@ -94,13 +87,14 @@ func (f *Factory) CreateCliApp() *cli.App {
 		f.CreateSessionService(),
 		f.CreateUserService(),
 		f.CreateFileService(),
+		f.GetDisplay(),
 		f.logger,
 	)
 }
 
 // CreateHTTPApp creates an HTTP app.
-func (f *Factory) CreateHTTPApp() *http.App {
-	return http.NewApp(
+func (f *Factory) CreateHTTPApp() *web.App {
+	return web.NewApp(
 		f.CreateSessionService(),
 		f.CreateUserService(),
 		f.CreateFileService(),
@@ -258,4 +252,22 @@ func (f *Factory) SetLogger(logger *log.Logger) {
 	defer f.mutex.Unlock()
 
 	f.logger = logger
+}
+
+func (f *Factory) GetDisplay() cli.Display {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+
+	if f.display == nil {
+		f.display = cli.NewStdout()
+	}
+
+	return f.display
+}
+
+func (f *Factory) SetDisplay(display cli.Display) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	f.display = display
 }
