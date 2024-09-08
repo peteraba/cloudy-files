@@ -325,3 +325,6 @@ issues:
         - predeclared
         - revive
         - wsl
+    - text: "CSRF"
+      linters:
+        - godox

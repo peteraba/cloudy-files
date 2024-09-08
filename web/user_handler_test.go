@@ -36,7 +36,7 @@ var defaultUsers = repo.UserModelMap{
 	},
 }
 
-func setup(t *testing.T, ctx context.Context) (*web.App, *store.InMemory, *store.InMemory, *store.InMemory) { //nolint:unparam // sessionStore will be used soon
+func setupUserHandler(t *testing.T, ctx context.Context) (http.Handler, *store.InMemory, *store.InMemory) { //nolint:unparam // sessionStore will be used soon
 	t.Helper()
 
 	factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
@@ -49,13 +49,13 @@ func setup(t *testing.T, ctx context.Context) (*web.App, *store.InMemory, *store
 	sessionStore := store.NewInMemory(util.NewSpy())
 	factory.SetStore(sessionStore, compose.SessionStore)
 
-	fileStore := store.NewInMemory(util.NewSpy())
-	factory.SetStore(fileStore, compose.FileStore)
+	sut := factory.CreateUserHandler()
+	handler := http.Handler(sut.SetupRoutes(http.NewServeMux()))
 
-	return factory.CreateHTTPApp(), userStore, sessionStore, fileStore
+	return handler, userStore, sessionStore
 }
 
-func TestApp_CreateUser(t *testing.T) {
+func TestUserHandler_CreateUser(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -72,17 +72,15 @@ func TestApp_CreateUser(t *testing.T) {
 			Access:   []string{"baz"},
 		}
 
-		app, _, _, _ := setup(t, ctx)
+		handler, _, _ := setupUserHandler(t, ctx)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users", utilTest.MustReader(t, userStub))
 		require.NoError(t, err)
 
 		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
 
-		rr := httptest.NewRecorder()
-		handler := http.Handler(app.Route())
-
 		// execute
+		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
@@ -107,7 +105,7 @@ func TestApp_CreateUser(t *testing.T) {
 			Access:   []string{"baz"},
 		}
 
-		app, _, _, _ := setup(t, ctx)
+		handler, _, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users", utilTest.MustReader(t, userStub))
@@ -115,10 +113,8 @@ func TestApp_CreateUser(t *testing.T) {
 
 		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
-		rr := httptest.NewRecorder()
-		handler := http.Handler(app.Route())
-
 		// execute
+		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
@@ -136,14 +132,13 @@ func TestApp_CreateUser(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		app, _, _, _ := setup(t, ctx)
+		handler, _, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users", strings.NewReader("invalid"))
 		require.NoError(t, err)
 
 		responseRecorder := httptest.NewRecorder()
-		handler := http.Handler(app.Route())
 
 		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
 
@@ -171,7 +166,7 @@ func TestApp_CreateUser(t *testing.T) {
 			Access:   []string{"baz"},
 		}
 
-		app, userStoreStub, _, _ := setup(t, ctx)
+		handler, userStoreStub, _ := setupUserHandler(t, ctx)
 
 		userStoreStub.GetSpy().Register("ReadForWrite", 0, apperr.ErrAccessDenied)
 
@@ -180,7 +175,6 @@ func TestApp_CreateUser(t *testing.T) {
 		require.NoError(t, err)
 
 		responseRecorder := httptest.NewRecorder()
-		handler := http.Handler(app.Route())
 
 		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
 
@@ -197,7 +191,7 @@ func TestApp_CreateUser(t *testing.T) {
 	})
 }
 
-func TestApp_ListFiles(t *testing.T) {
+func TestUserHandler_ListUsers(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -206,30 +200,16 @@ func TestApp_ListFiles(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		fileNameStub := "foo.txt"
-		accessStub := []string{"foo", "bar"}
-
-		filesStub := make(repo.FileModelMap, 0)
-		filesStub[fileNameStub] = repo.FileModel{
-			Name:   fileNameStub,
-			Access: accessStub,
-		}
-
-		app, _, _, fileStoreStub := setup(t, ctx)
-
-		err := fileStoreStub.Marshal(ctx, filesStub)
-		require.NoError(t, err)
+		handler, _, _ := setupUserHandler(t, ctx)
 
 		// setup request
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/files", nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/users", nil)
 		require.NoError(t, err)
 
 		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
 
-		rr := httptest.NewRecorder()
-		handler := http.Handler(app.Route())
-
 		// execute
+		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
@@ -238,39 +218,24 @@ func TestApp_ListFiles(t *testing.T) {
 		// assert
 		assert.Equal(t, http.StatusOK, rr.Code)
 		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, fileNameStub)
-		assert.Contains(t, actualBody, accessStub[0])
-		assert.Contains(t, actualBody, accessStub[1])
+		assert.Contains(t, actualBody, defaultUsers["foo"].Name)
+		assert.Contains(t, actualBody, defaultUsers["bar"].Name)
 	})
 
 	t.Run("success html", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		fileNameStub := "foo.txt"
-		accessStub := []string{"foo", "bar"}
-
-		filesStub := make(repo.FileModelMap, 0)
-		filesStub[fileNameStub] = repo.FileModel{
-			Name:   fileNameStub,
-			Access: accessStub,
-		}
-
-		app, _, _, fileStoreStub := setup(t, ctx)
-
-		err := fileStoreStub.Marshal(ctx, filesStub)
-		require.NoError(t, err)
+		handler, _, _ := setupUserHandler(t, ctx)
 
 		// setup request
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/files", nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/users", nil)
 		require.NoError(t, err)
 
 		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
-		rr := httptest.NewRecorder()
-		handler := http.Handler(app.Route())
-
 		// execute
+		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
@@ -280,39 +245,27 @@ func TestApp_ListFiles(t *testing.T) {
 		assert.Equal(t, http.StatusOK, rr.Code)
 		assert.Contains(t, actualContentType, web.ContentTypeHTML)
 		assert.Contains(t, actualBody, "</html>")
-		assert.Contains(t, actualBody, fileNameStub)
-		assert.Contains(t, actualBody, accessStub[0])
-		assert.Contains(t, actualBody, accessStub[1])
+		assert.Contains(t, actualBody, defaultUsers["foo"].Name)
+		assert.Contains(t, actualBody, defaultUsers["bar"].Name)
 	})
 
-	t.Run("fail if service fails to list files", func(t *testing.T) {
+	t.Run("fail if service fails to list users", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		fileNameStub := "foo.txt"
-		accessStub := []string{"foo", "bar"}
+		handler, userStoreStub, _ := setupUserHandler(t, ctx)
 
-		filesStub := make(repo.FileModelMap, 0)
-		filesStub[fileNameStub] = repo.FileModel{
-			Name:   fileNameStub,
-			Access: accessStub,
-		}
-
-		app, _, _, fileStoreStub := setup(t, ctx)
-
-		fileStoreSpy := fileStoreStub.GetSpy()
-		fileStoreSpy.Register("Read", 0, apperr.ErrAccessDenied)
+		userStoreSpy := userStoreStub.GetSpy()
+		userStoreSpy.Register("Read", 0, apperr.ErrAccessDenied)
 
 		// setup request
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/files", nil)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/users", nil)
 		require.NoError(t, err)
 
 		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
 
-		rr := httptest.NewRecorder()
-		handler := http.Handler(app.Route())
-
 		// execute
+		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
@@ -325,7 +278,7 @@ func TestApp_ListFiles(t *testing.T) {
 	})
 }
 
-func TestApp_DeleteUser(t *testing.T) {
+func TestUserHandler_NotImplemented(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -350,48 +303,21 @@ func TestApp_DeleteUser(t *testing.T) {
 			method: http.MethodPut,
 			url:    "/users/foo",
 		},
-		{
-			name:   "DeleteFile",
-			method: http.MethodDelete,
-			url:    "/files/foo",
-		},
-		{
-			name:   "DeleteUser",
-			method: http.MethodDelete,
-			url:    "/users/foo",
-		},
-		{
-			name:   "UploadFile",
-			method: http.MethodPost,
-			url:    "/file-uploads",
-		},
-		{
-			name:   "RetrieveFile",
-			method: http.MethodGet,
-			url:    "/file-uploads",
-		},
-		{
-			name:   "Home",
-			method: http.MethodGet,
-			url:    "/",
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			// setup
-			app, _, _, _ := setup(t, ctx)
+			handler, _, _ := setupUserHandler(t, ctx)
 
 			req, err := http.NewRequestWithContext(ctx, tt.method, tt.url, nil)
 			require.NoError(t, err)
 
 			req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
 
-			rr := httptest.NewRecorder()
-			handler := http.Handler(app.Route())
-
 			// execute
+			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, req)
 			actualBody := rr.Body.String()
 			actualContentType := rr.Header().Get(web.HeaderContentType)
@@ -407,17 +333,15 @@ func TestApp_DeleteUser(t *testing.T) {
 			t.Parallel()
 
 			// setup
-			app, _, _, _ := setup(t, ctx)
+			handler, _, _ := setupUserHandler(t, ctx)
 
 			req, err := http.NewRequestWithContext(ctx, tt.method, tt.url, nil)
 			require.NoError(t, err)
 
 			req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
-			rr := httptest.NewRecorder()
-			handler := http.Handler(app.Route())
-
 			// execute
+			rr := httptest.NewRecorder()
 			handler.ServeHTTP(rr, req)
 			actualBody := rr.Body.String()
 			actualContentType := rr.Header().Get(web.HeaderContentType)

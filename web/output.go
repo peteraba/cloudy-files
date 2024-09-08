@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/phuslu/log"
+
 	"github.com/peteraba/cloudy-files/apperr"
 )
 
@@ -17,9 +19,11 @@ const (
 )
 
 const (
-	ContentTypeJSON = "application/json"
-	ContentTypeText = "text/plain"
-	ContentTypeHTML = "text/html"
+	ContentTypeJSON     = "application/json"
+	ContentTypeJSONUTF8 = "application/json; charset=utf-8"
+	ContentTypeText     = "text/plain"
+	ContentTypeHTML     = "text/html"
+	ContentTypeHTMLUTF8 = "text/html; charset=utf-8"
 )
 
 var supportedTypes = []string{ContentTypeJSON, ContentTypeHTML} //nolint:gochecknoglobals // This is a constant.
@@ -49,12 +53,12 @@ func negotiateContentType(accept string, supportedTypes []string) string {
 		}
 	}
 
-	// No match found
-	return ""
+	// No match found, assume the first supported type
+	return supportedTypes[0]
 }
 
-func (a *App) error(w http.ResponseWriter, r *http.Request, err error) {
-	a.logger.Error().Err(err).Msg("Error")
+func problem(w http.ResponseWriter, r *http.Request, err error, logger *log.Logger) {
+	logger.Error().Err(err).Msg("Error")
 
 	httpError := apperr.GetProblem(err)
 
@@ -73,18 +77,14 @@ func (a *App) error(w http.ResponseWriter, r *http.Request, err error) {
 	w.WriteHeader(httpError.Status)
 
 	if isJSONRequest(r) {
-		a.json(w, httpError)
+		sendJSON(w, httpError, logger)
 	} else {
-		a.html(w, httpError)
+		sendHTML(w, httpError, logger)
 	}
 }
 
-func (a *App) nobody(w http.ResponseWriter) {
-	w.Header().Set(HeaderContentType, ContentTypeText+"; charset=utf-8")
-}
-
-func (a *App) json(w http.ResponseWriter, content interface{}) {
-	w.Header().Set(HeaderContentType, ContentTypeJSON+"; charset=utf-8")
+func sendJSON(w http.ResponseWriter, content interface{}, logger *log.Logger) {
+	w.Header().Set(HeaderContentType, ContentTypeJSONUTF8)
 
 	if content == nil {
 		return
@@ -92,21 +92,21 @@ func (a *App) json(w http.ResponseWriter, content interface{}) {
 
 	payload, err := json.Marshal(content)
 	if err != nil {
-		a.logger.Error().Err(err).Msg("Error during rendering JSON.")
+		logger.Error().Err(err).Msg("Error during rendering JSON.")
 
 		return
 	}
 
 	_, err = w.Write(payload)
 	if err != nil {
-		a.logger.Error().Err(err).Msg("Error during writing content.")
+		logger.Error().Err(err).Msg("Error during writing content.")
 
 		return
 	}
 }
 
-func (a *App) html(w http.ResponseWriter, content interface{}) {
-	w.Header().Set(HeaderContentType, ContentTypeHTML+"; charset=utf-8")
+func sendHTML(w http.ResponseWriter, content interface{}, logger *log.Logger) {
+	w.Header().Set(HeaderContentType, ContentTypeHTMLUTF8)
 
 	body := fmt.Sprint(content)
 	if httpError, ok := content.(*apperr.Problem); ok {
@@ -156,6 +156,6 @@ func (a *App) html(w http.ResponseWriter, content interface{}) {
 
 	_, err := fmt.Fprintf(w, tmpl, body)
 	if err != nil {
-		a.logger.Error().Err(err).Msg("Error during writing content.")
+		logger.Error().Err(err).Msg("Error during writing content.")
 	}
 }

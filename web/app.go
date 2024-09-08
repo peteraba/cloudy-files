@@ -2,29 +2,15 @@ package web
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/phuslu/log"
-
-	"github.com/peteraba/cloudy-files/apperr"
-	"github.com/peteraba/cloudy-files/repo"
-	"github.com/peteraba/cloudy-files/service"
-)
-
-const (
-	paramUsername = "username"
-	paramEmail    = "email"
-	paramPassword = "password"
-	paramIsAdmin  = "isAdmin"
-	paramAccess   = "access"
 )
 
 const (
@@ -33,19 +19,17 @@ const (
 
 // App represents the command line interface.
 type App struct {
-	sessionService *service.Session
-	userService    *service.User
-	fileService    *service.File
-	logger         *log.Logger
+	userHandler *UserHandler
+	fileHandler *FileHandler
+	logger      *log.Logger
 }
 
 // NewApp creates a new App instance.
-func NewApp(sessionService *service.Session, userService *service.User, fileService *service.File, logger *log.Logger) *App {
+func NewApp(users *UserHandler, files *FileHandler, logger *log.Logger) *App {
 	return &App{
-		sessionService: sessionService,
-		userService:    userService,
-		fileService:    fileService,
-		logger:         logger,
+		userHandler: users,
+		fileHandler: files,
+		logger:      logger,
 	}
 }
 
@@ -53,35 +37,8 @@ func NewApp(sessionService *service.Session, userService *service.User, fileServ
 func (a *App) Route() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	// List Users (Admin-only)
-	mux.HandleFunc("GET /users", a.ListUsers)
-
-	// Get User (Admin-only)
-	mux.HandleFunc("GET /users/{id}", a.GetUser)
-
-	// Create User (Admin-only)
-	mux.HandleFunc("POST /users", a.CreateUser)
-
-	// Update User (Admin-only)
-	mux.HandleFunc("PUT /users/{id}", a.UpdateUser)
-
-	// Update User (Admin-only)
-	mux.HandleFunc("DELETE /users/{id}", a.DeleteUser)
-
-	// List Files (Logged-in)
-	mux.HandleFunc("GET /files", a.ListFiles)
-
-	// Delete File (Admin-only)
-	mux.HandleFunc("DELETE /files/{id}", a.DeleteFile)
-
-	// Login (Any)
-	mux.HandleFunc("GET /user-logins", a.Login)
-
-	// Upload File (Admin-only)
-	mux.HandleFunc("POST /file-uploads", a.UploadFile)
-
-	// Retrieve File (Logged-in)
-	mux.HandleFunc("GET /file-uploads", a.RetrieveFile)
+	a.userHandler.SetupRoutes(mux)
+	a.fileHandler.SetupRoutes(mux)
 
 	mux.HandleFunc("GET /", a.Home)
 
@@ -120,172 +77,35 @@ func (a *App) Start(mux *http.ServeMux) {
 	a.logger.Info().Msg("Server shutdown failed.")
 }
 
-// ListUsers lists users.
-func (a *App) ListUsers(w http.ResponseWriter, r *http.Request) {
-	users, err := a.userService.List(r.Context())
-	if err != nil {
-		a.error(w, r, err)
-
-		return
-	}
-
-	if isJSONRequest(r) {
-		a.json(w, users)
-
-		return
-	}
-
-	a.html(w, users)
-}
-
-// GetUser retrieves a user.
-func (a *App) GetUser(w http.ResponseWriter, r *http.Request) {
-	a.error(w, r, apperr.ErrNotImplemented)
-}
-
-// CreateUser creates a user.
-func (a *App) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var user repo.UserModel
-
-	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
-		a.error(w, r, fmt.Errorf("failed to decode user, err: %w", apperr.ErrBadRequest(err)))
-
-		return
-	}
-
-	userModel, err := a.userService.Create(r.Context(), user.Name, user.Email, user.Password, user.IsAdmin, user.Access)
-	if err != nil {
-		a.error(w, r, err)
-	}
-
-	a.logger.Info().Str("username", user.Name).Msg("User created.")
-
-	if isJSONRequest(r) {
-		a.json(w, userModel)
-
-		return
-	}
-
-	userHTML := []string{
-		fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>", "name", userModel.Name),
-		fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>", "email", userModel.Email),
-	}
-
-	tmpl := fmt.Sprintf(
-		`<table>
-	<thead>
-		<tr>
-			<th>Name</th>
-			<th>Access</th>
-		</tr>
-	</thead>
-	<tbody>
-%s
-	</tbody>
-</table>
-`,
-		strings.Join(userHTML, ""),
-	)
-
-	a.html(w, tmpl)
-}
-
-// UpdateUser updates a user.
-func (a *App) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	a.error(w, r, apperr.ErrNotImplemented)
-}
-
-// DeleteUser deletes a user.
-func (a *App) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	a.error(w, r, apperr.ErrNotImplemented)
-}
-
-// ListFiles lists files.
-func (a *App) ListFiles(w http.ResponseWriter, r *http.Request) {
-	files, err := a.fileService.List(r.Context(), nil, true)
-	if err != nil {
-		a.error(w, r, err)
-
-		return
-	}
-
-	if isJSONRequest(r) {
-		a.json(w, files)
-
-		return
-	}
-
-	fileHTML := make([]string, 0, len(files))
-	for _, file := range files {
-		fileHTML = append(fileHTML, fmt.Sprintf(
-			`<tr>
-	<td>%s</td>
-	<td>%s</td>
-</tr>
-`,
-			file.Name,
-			strings.Join(file.Access, ", "),
-		))
-	}
-
-	tmpl := fmt.Sprintf(
-		`<table>
-	<thead>
-		<tr>
-			<th>Name</th>
-			<th>Access</th>
-		</tr>
-	</thead>
-	<tbody>
-%s
-	</tbody>
-</table>
-`,
-		strings.Join(fileHTML, ""),
-	)
-
-	a.html(w, tmpl)
-}
-
-// DeleteFile deletes a file.
-func (a *App) DeleteFile(w http.ResponseWriter, r *http.Request) {
-	a.error(w, r, apperr.ErrNotImplemented)
-}
-
-// Login logs in a user.
-func (a *App) Login(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-
-	username := query.Get(paramUsername)
-	password := query.Get(paramPassword)
-
-	session, err := a.userService.Login(r.Context(), username, password)
-	if err != nil {
-		a.error(w, r, err)
-
-		return
-	}
-
-	a.logger.Info().
-		Str(paramUsername, username).
-		Str("hash", session.Hash).
-		Msg("Login successful.")
-
-	a.nobody(w)
-}
-
-// UploadFile uploads a file.
-func (a *App) UploadFile(w http.ResponseWriter, r *http.Request) {
-	a.error(w, r, apperr.ErrNotImplemented)
-}
-
-// RetrieveFile retrieves a file.
-func (a *App) RetrieveFile(w http.ResponseWriter, r *http.Request) {
-	a.error(w, r, apperr.ErrNotImplemented)
+type HealthResponse struct {
+	Status string `json:"status"`
 }
 
 // Home is the default route.
 func (a *App) Home(w http.ResponseWriter, r *http.Request) {
-	a.error(w, r, apperr.ErrNotImplemented)
+	if isJSONRequest(r) {
+		sendJSON(w, HealthResponse{Status: "ok"}, a.logger)
+
+		return
+	}
+
+	// TODO: Generate and store CSRF token
+	csrf := "TODO"
+
+	tmpl := fmt.Sprintf(
+		`<form>
+  <fieldset>
+    <label for="nameField">Name</label>
+    <input type="text" name="username" placeholder="peter81" id="nameField">
+    <label for="passField">Password</label>
+    <input type="password" name="password" placeholder="verysecretpass" id="passField">
+    <input type="hidden" name="csrf" value="%s">
+    <input class="button-primary" type="submit" value="Send">
+  </fieldset>
+</form>
+`,
+		csrf,
+	)
+
+	sendHTML(w, tmpl, a.logger)
 }

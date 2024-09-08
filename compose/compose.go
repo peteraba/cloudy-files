@@ -95,8 +95,23 @@ func (f *Factory) CreateCliApp() *cli.App {
 // CreateHTTPApp creates an HTTP app.
 func (f *Factory) CreateHTTPApp() *web.App {
 	return web.NewApp(
+		f.CreateUserHandler(),
+		f.CreateFileHandler(),
+		f.logger,
+	)
+}
+
+func (f *Factory) CreateUserHandler() *web.UserHandler {
+	return web.NewUserHandler(
 		f.CreateSessionService(),
 		f.CreateUserService(),
+		f.logger,
+	)
+}
+
+func (f *Factory) CreateFileHandler() *web.FileHandler {
+	return web.NewFileHandler(
+		f.CreateSessionService(),
 		f.CreateFileService(),
 		f.logger,
 	)
