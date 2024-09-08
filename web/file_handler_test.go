@@ -158,6 +158,18 @@ func TestFileHandler_ListFiles(t *testing.T) {
 	})
 }
 
+func TestFileHandler_DeleteFile(t *testing.T) {
+	t.Parallel()
+}
+
+func TestFileHandler_UploadFile(t *testing.T) {
+	t.Parallel()
+}
+
+func TestFileHandler_RetrieveFile(t *testing.T) {
+	t.Parallel()
+}
+
 func TestFileHandler_NotImplemented(t *testing.T) {
 	t.Parallel()
 

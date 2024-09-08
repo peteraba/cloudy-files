@@ -16,17 +16,22 @@ const (
 	HeaderAccept             = "Accept"
 	HeaderContentLength      = "Content-Length"
 	HeaderContentTypeOptions = "X-Content-Type-Options"
+	HeaderLocation           = "Location"
+	HeaderXForwardedFor      = "X-Forwarded-For"
+	HeaderXRealIP            = "X-Real-IP"
 )
 
 const (
-	ContentTypeJSON     = "application/json"
-	ContentTypeJSONUTF8 = "application/json; charset=utf-8"
-	ContentTypeText     = "text/plain"
-	ContentTypeHTML     = "text/html"
-	ContentTypeHTMLUTF8 = "text/html; charset=utf-8"
+	ContentTypeJSON      = "application/json"
+	ContentTypeJSONUTF8  = "application/json; charset=utf-8"
+	ContentTypePlain     = "text/plain"
+	ContentTypeHTML      = "text/html"
+	ContentTypeHTMLUTF8  = "text/html; charset=utf-8"
+	ContentTypeForm      = "application/x-www-form-urlencoded"
+	ContentTypeMultipart = "multipart/form-data"
 )
 
-var supportedTypes = []string{ContentTypeJSON, ContentTypeHTML} //nolint:gochecknoglobals // This is a constant.
+var supportedTypes = []string{ContentTypePlain, ContentTypeJSON, ContentTypeHTML} //nolint:gochecknoglobals // This is a constant.
 
 func isJSONRequest(r *http.Request) bool {
 	accept := r.Header.Get(HeaderAccept)
@@ -107,6 +112,7 @@ func sendJSON(w http.ResponseWriter, content interface{}, logger *log.Logger) {
 
 func sendHTML(w http.ResponseWriter, content interface{}, logger *log.Logger) {
 	w.Header().Set(HeaderContentType, ContentTypeHTMLUTF8)
+	w.WriteHeader(http.StatusOK)
 
 	body := fmt.Sprint(content)
 	if httpError, ok := content.(*apperr.Problem); ok {

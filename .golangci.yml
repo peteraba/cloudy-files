@@ -96,6 +96,7 @@ linters-settings:
   mnd:
     ignored-files:
       - "app\\.go"
+      - "main\\.go"
 
   nakedret:
     # Make an issue if func has more lines of code than this setting, and it has naked returns.
@@ -325,6 +326,18 @@ issues:
         - predeclared
         - revive
         - wsl
+    - text: "flash error"
+      linters:
+        - godox
     - text: "CSRF"
       linters:
         - godox
+    - text: "apperr"
+      linters:
+        - wrapcheck
+    - text: "parse returns generic interface"
+      linters:
+        - ireturn
+    - path: "web/"
+      linters:
+        - exhaustruct

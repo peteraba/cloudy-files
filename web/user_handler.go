@@ -1,7 +1,6 @@
 package web
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -29,71 +28,72 @@ func NewUserHandler(sessionService *service.Session, userService *service.User, 
 
 func (uh *UserHandler) SetupRoutes(mux *http.ServeMux) *http.ServeMux {
 	mux.HandleFunc("POST /user-logins", uh.Login)
-	mux.HandleFunc("GET /users", uh.ListUsers)
-	mux.HandleFunc("GET /users/{id}", uh.GetUser)
 	mux.HandleFunc("POST /users", uh.CreateUser)
-	mux.HandleFunc("PUT /users/{id}", uh.UpdateUser)
+	mux.HandleFunc("GET /users", uh.ListUsers)
+	mux.HandleFunc("PUT /users/{id}/passwords", uh.UpdateUserPassword)
+	mux.HandleFunc("PUT /users/{id}/accesses", uh.UpdateUserAccess)
+	mux.HandleFunc("PUT /users/{id}/promotions", uh.PromoteUser)
+	mux.HandleFunc("PUT /users/{id}/demotions", uh.DemoteUser)
 	mux.HandleFunc("DELETE /users/{id}", uh.DeleteUser)
 
 	return mux
 }
 
+// LoginRequest represents a password change request.
+type LoginRequest struct {
+	Username string `json:"username" formam:"username"`
+	Password string `json:"password" formam:"password"`
+	CSRF     string `json:"-"        formam:"csrf"`
+}
+
 // Login logs in a user.
 func (uh *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	if isJSONRequest(r) {
-		uh.LoginHTML(w, r)
+		uh.LoginAPI(w, r)
 
 		return
 	}
 
-	uh.LoginAPI(w, r)
-}
-
-// LoginForm represents a login form.
-type LoginForm struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	uh.LoginHTML(w, r)
 }
 
 // LoginHTML logs in a user via the HTML form.
 func (uh *UserHandler) LoginHTML(w http.ResponseWriter, r *http.Request) {
-	loginForm := LoginForm{
-		Username: r.FormValue("username"),
-		Password: r.FormValue("password"),
+	loginRequest, err := parse(r, LoginRequest{})
+	if err != nil {
+		// TODO: flash errors
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+
+		return
 	}
 
 	// TODO: verify CSRF token
 
 	// attempt to start a new session with the login credentials
-	session, err := uh.userService.Login(r.Context(), loginForm.Username, loginForm.Password)
+	session, err := uh.userService.Login(r.Context(), loginRequest.Username, loginRequest.Password)
 	if err != nil {
-		problem(w, r, err, uh.logger)
-
+		// TODO: flash errors
 		http.Redirect(w, r, "/", http.StatusSeeOther)
+
+		return
 	}
 
 	// log the successful login
 	uh.logger.Info().
-		Str("username", loginForm.Username).
+		Str("username", loginRequest.Username).
 		Str("hash", session.Hash).
 		Msg("Login successful.")
+
+	// TODO: flash errors
 
 	http.Redirect(w, r, "/users", http.StatusSeeOther)
 }
 
-// LoginAPIRequest represents a login request.
-type LoginAPIRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
 // LoginAPI logs in a user via the API.
 func (uh *UserHandler) LoginAPI(w http.ResponseWriter, r *http.Request) {
-	var loginRequest LoginAPIRequest
-
-	err := json.NewDecoder(r.Body).Decode(&loginRequest)
+	loginRequest, err := parse(r, LoginRequest{})
 	if err != nil {
-		problem(w, r, fmt.Errorf("failed to decode user, err: %w", apperr.ErrBadRequest(err)), uh.logger)
+		problem(w, r, err, uh.logger)
 
 		return
 	}
@@ -159,26 +159,22 @@ func (uh *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	sendHTML(w, tmpl, uh.logger)
 }
 
-func (uh *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	problem(w, r, apperr.ErrNotImplemented, uh.logger)
-}
-
 func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var user repo.UserModel
-
-	err := json.NewDecoder(r.Body).Decode(&user)
+	userModel, err := parse(r, repo.UserModel{})
 	if err != nil {
-		problem(w, r, fmt.Errorf("failed to decode user, err: %w", apperr.ErrBadRequest(err)), uh.logger)
+		problem(w, r, fmt.Errorf("failed to parse user, err: %w", apperr.ErrBadRequest(err)), uh.logger)
 
 		return
 	}
 
-	userModel, err := uh.userService.Create(r.Context(), user.Name, user.Email, user.Password, user.IsAdmin, user.Access)
+	userModel, err = uh.userService.Create(r.Context(), userModel.Name, userModel.Email, userModel.Password, userModel.IsAdmin, userModel.Access)
 	if err != nil {
 		problem(w, r, err, uh.logger)
+
+		return
 	}
 
-	uh.logger.Info().Str("username", user.Name).Msg("User created.")
+	uh.logger.Info().Str("username", userModel.Name).Msg("User created.")
 
 	if isJSONRequest(r) {
 		sendJSON(w, userModel, uh.logger)
@@ -186,34 +182,150 @@ func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userHTML := []string{
-		fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>", "name", userModel.Name),
-		fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>", "email", userModel.Email),
+	// TODO: flash errors
+
+	http.Redirect(w, r, "/users", http.StatusSeeOther)
+}
+
+// PasswordChangeRequest represents a password change request.
+type PasswordChangeRequest struct {
+	Username string `json:"username" formam:"username"`
+	Password string `json:"password" formam:"password"`
+	CSRF     string `json:"-"        formam:"csrf"`
+}
+
+// UpdateUserPassword updates a user's password.
+func (uh *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
+	req, err := parse(r, PasswordChangeRequest{})
+	if err != nil {
+		problem(w, r, err, uh.logger)
+
+		return
 	}
 
-	tmpl := fmt.Sprintf(
-		`<table>
-        <thead>
-                <tr>
-                        <th>Name</th>
-                        <th>Access</th>
-                </tr>
-        </thead>
-        <tbody>
-%s
-        </tbody>
-</table>
-`,
-		strings.Join(userHTML, ""),
-	)
+	user, err := uh.userService.UpdatePassword(r.Context(), req.Username, req.Password)
+	if err != nil {
+		problem(w, r, err, uh.logger)
 
-	sendHTML(w, tmpl, uh.logger)
+		return
+	}
+
+	if isJSONRequest(r) {
+		sendJSON(w, user, uh.logger)
+
+		return
+	}
+
+	// TODO: flash errors
+
+	http.Redirect(w, r, "/users", http.StatusSeeOther)
 }
 
-func (uh *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	problem(w, r, apperr.ErrNotImplemented, uh.logger)
+// AccessChangeRequest represents an access change request.
+type AccessChangeRequest struct {
+	Username string   `json:"username" formam:"username"`
+	Access   []string `json:"access"   formam:"access"`
+	CSRF     string   `json:"-"        formam:"csrf"`
 }
 
+// UpdateUserAccess updates a user's access.
+func (uh *UserHandler) UpdateUserAccess(w http.ResponseWriter, r *http.Request) {
+	req, err := parse(r, AccessChangeRequest{})
+	if err != nil {
+		problem(w, r, err, uh.logger)
+
+		return
+	}
+
+	user, err := uh.userService.UpdateAccess(r.Context(), req.Username, req.Access)
+	if err != nil {
+		problem(w, r, err, uh.logger)
+
+		return
+	}
+
+	if isJSONRequest(r) {
+		sendJSON(w, user, uh.logger)
+
+		return
+	}
+
+	// TODO: flash errors
+
+	http.Redirect(w, r, "/users", http.StatusSeeOther)
+}
+
+// UserNameOnlyRequest represents a request where the username is the only mandatory field.
+type UserNameOnlyRequest struct {
+	Username string `json:"username" formam:"username"`
+	CSRF     string `json:"-"        formam:"csrf"`
+}
+
+// PromoteUser promotes a user to admin.
+func (uh *UserHandler) PromoteUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	name := r.PathValue("id")
+
+	user, err := uh.userService.Promote(ctx, name)
+	if err != nil {
+		problem(w, r, err, uh.logger)
+
+		return
+	}
+
+	if isJSONRequest(r) {
+		sendJSON(w, user, uh.logger)
+
+		return
+	}
+
+	// TODO: flash errors
+
+	http.Redirect(w, r, "/users", http.StatusSeeOther)
+}
+
+// DemoteUser demotes a user from admin.
+func (uh *UserHandler) DemoteUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	name := r.PathValue("id")
+
+	user, err := uh.userService.Demote(ctx, name)
+	if err != nil {
+		problem(w, r, err, uh.logger)
+
+		return
+	}
+
+	if isJSONRequest(r) {
+		sendJSON(w, user, uh.logger)
+
+		return
+	}
+
+	// TODO: flash errors
+
+	http.Redirect(w, r, "/users", http.StatusSeeOther)
+}
+
+// DeleteUser deletes a user.
 func (uh *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	problem(w, r, apperr.ErrNotImplemented, uh.logger)
+	ctx := r.Context()
+	name := r.PathValue("id")
+
+	err := uh.userService.Delete(ctx, name)
+	if err != nil {
+		problem(w, r, err, uh.logger)
+
+		return
+	}
+
+	if isJSONRequest(r) {
+		w.WriteHeader(http.StatusNoContent)
+
+		return
+	}
+
+	// TODO: flash errors
+
+	http.Redirect(w, r, "/users", http.StatusSeeOther)
 }

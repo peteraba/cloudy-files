@@ -156,7 +156,7 @@ func (f *File) createEntries(data []byte) error {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
-	entries := make(map[string]FileModel)
+	entries := make(FileModelMap)
 
 	if len(data) > 0 {
 		err := json.Unmarshal(data, &entries)

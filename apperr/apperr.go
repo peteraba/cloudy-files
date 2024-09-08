@@ -36,6 +36,14 @@ func ErrBadRequest(err error) error {
 	return fmt.Errorf("%s, err: %w", err.Error(), errBadRequest)
 }
 
+// ErrEmptyForm is returned when a form is empty that shouldn't be.
+var ErrEmptyForm = fmt.Errorf("form is empty, err: %w", errBadRequest)
+
+// ErrValidation returns a validation error.
+func ErrValidation(msg string) error {
+	return fmt.Errorf("%s, err: %w", msg, errBadRequest)
+}
+
 // Problem represents a JSON error response.
 type Problem struct { //nolint:errname // This is Zalando standard naming
 	Type   string `json:"type,omitempty"`

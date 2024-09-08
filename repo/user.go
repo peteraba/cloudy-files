@@ -5,17 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/peteraba/cloudy-files/apperr"
 )
 
 // UserModel represents a user model.
 type UserModel struct {
-	Name     string   `json:"name"`
-	Email    string   `json:"email"`
-	Password string   `json:"password"`
-	IsAdmin  bool     `json:"is_admin"`
-	Access   []string `json:"access"`
+	Name     string      `json:"name"     formam:"name"`
+	Email    string      `json:"email"    formam:"email"`
+	Password string      `json:"password" formam:"password"`
+	IsAdmin  bool        `json:"is_admin" formam:"is_admin"`
+	Access   []string    `json:"access"   formam:"access"`
+	CSRFList []CSRFModel `json:"-"        formam:"-"`
 }
 
 // UserModels represents a user model list.
@@ -133,6 +135,7 @@ func (u *User) Create(ctx context.Context, name, email, password string, isAdmin
 		Access:   access,
 		Password: password,
 		IsAdmin:  isAdmin,
+		CSRFList: nil,
 	}
 
 	err = u.writeAfterRead(ctx)
@@ -141,6 +144,178 @@ func (u *User) Create(ctx context.Context, name, email, password string, isAdmin
 	}
 
 	return u.entries[name], nil
+}
+
+// UpdatePassword updates the password of a user.
+func (u *User) UpdatePassword(ctx context.Context, name, password string) (UserModel, error) {
+	err := u.readForWrite(ctx)
+	if err != nil {
+		return UserModel{}, err
+	}
+	defer u.store.Unlock(ctx)
+
+	u.lock.Lock()
+	defer u.lock.Unlock()
+
+	entry, ok := u.entries[name]
+	if !ok {
+		return UserModel{}, fmt.Errorf("user not found: %s, err: %w", name, apperr.ErrNotFound)
+	}
+
+	entry.Password = password
+
+	u.entries[name] = entry
+
+	err = u.writeAfterRead(ctx)
+	if err != nil {
+		return UserModel{}, err
+	}
+
+	return entry, nil
+}
+
+// UpdateAccess updates the access of a user.
+func (u *User) UpdateAccess(ctx context.Context, name string, access []string) (UserModel, error) {
+	err := u.readForWrite(ctx)
+	if err != nil {
+		return UserModel{}, err
+	}
+	defer u.store.Unlock(ctx)
+
+	u.lock.Lock()
+	defer u.lock.Unlock()
+
+	entry, ok := u.entries[name]
+	if !ok {
+		return UserModel{}, fmt.Errorf("user not found: %s, err: %w", name, apperr.ErrNotFound)
+	}
+
+	entry.Access = access
+
+	u.entries[name] = entry
+
+	err = u.writeAfterRead(ctx)
+	if err != nil {
+		return UserModel{}, err
+	}
+
+	return entry, nil
+}
+
+// Promote promotes a user to admin.
+func (u *User) Promote(ctx context.Context, name string) (UserModel, error) {
+	err := u.readForWrite(ctx)
+	if err != nil {
+		return UserModel{}, err
+	}
+	defer u.store.Unlock(ctx)
+
+	u.lock.Lock()
+	defer u.lock.Unlock()
+
+	entry, ok := u.entries[name]
+	if !ok {
+		return UserModel{}, fmt.Errorf("user not found: %s, err: %w", name, apperr.ErrNotFound)
+	}
+
+	if entry.IsAdmin {
+		return UserModel{}, apperr.ErrValidation("user is already an admin")
+	}
+
+	entry.IsAdmin = true
+
+	u.entries[name] = entry
+
+	err = u.writeAfterRead(ctx)
+	if err != nil {
+		return UserModel{}, err
+	}
+
+	return entry, nil
+}
+
+// Demote demotes an admin to user.
+func (u *User) Demote(ctx context.Context, name string) (UserModel, error) {
+	err := u.readForWrite(ctx)
+	if err != nil {
+		return UserModel{}, err
+	}
+	defer u.store.Unlock(ctx)
+
+	u.lock.Lock()
+	defer u.lock.Unlock()
+
+	entry, ok := u.entries[name]
+	if !ok {
+		return UserModel{}, fmt.Errorf("user not found: %s, err: %w", name, apperr.ErrNotFound)
+	}
+
+	if !entry.IsAdmin {
+		return UserModel{}, apperr.ErrValidation("user is not an admin")
+	}
+
+	entry.IsAdmin = false
+
+	u.entries[name] = entry
+
+	err = u.writeAfterRead(ctx)
+	if err != nil {
+		return UserModel{}, err
+	}
+
+	return entry, nil
+}
+
+// AddCSRF adds a CSRF token to a user.
+func (u *User) AddCSRF(ctx context.Context, name, token string) (UserModel, error) {
+	err := u.readForWrite(ctx)
+	if err != nil {
+		return UserModel{}, fmt.Errorf("error reading for write: %w", err)
+	}
+	defer u.store.Unlock(ctx)
+
+	u.lock.Lock()
+	defer u.lock.Unlock()
+
+	entry, ok := u.entries[name]
+	if !ok {
+		return UserModel{}, fmt.Errorf("user not found: %s, err: %w", name, apperr.ErrNotFound)
+	}
+
+	entry.CSRFList = append(entry.CSRFList, CSRFModel{
+		Token:   token,
+		Expires: time.Now().Add(csrfTime).Unix(),
+	})
+
+	u.entries[name] = entry
+
+	err = u.writeAfterRead(ctx)
+	if err != nil {
+		return UserModel{}, fmt.Errorf("error writing after read: %w", err)
+	}
+
+	return entry, nil
+}
+
+// Delete deletes a user.
+func (u *User) Delete(ctx context.Context, name string) error {
+	err := u.readForWrite(ctx)
+	if err != nil {
+		return fmt.Errorf("error reading for write: %w", err)
+	}
+	defer u.store.Unlock(ctx)
+
+	u.lock.Lock()
+	defer u.lock.Unlock()
+
+	delete(u.entries, name)
+
+	err = u.writeAfterRead(ctx)
+	if err != nil {
+		return fmt.Errorf("error writing after read: %w", err)
+	}
+
+	return nil
 }
 
 // read reads the session data from the store and creates entries.

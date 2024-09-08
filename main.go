@@ -32,8 +32,18 @@ func main() {
 
 	switch os.Args[1] {
 	case commandCli:
+		if len(os.Args) <= 2 {
+			factory.GetLogger().Error().Msg("Please provide a subcommand.")
+			os.Exit(1)
+		}
+
+		args := []string{}
+		if len(os.Args) > 2 {
+			args = os.Args[3:]
+		}
+
 		cliApp := factory.CreateCliApp()
-		cliApp.Route(ctx, os.Args[1], os.Args[2:]...)
+		cliApp.Route(ctx, os.Args[2], args...)
 	case commandHTTP:
 		router := factory.CreateHTTPApp()
 		mux := router.Route()

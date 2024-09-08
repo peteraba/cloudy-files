@@ -118,3 +118,58 @@ func (u *User) CheckPasswordHash(ctx context.Context, password, hash string) err
 func (u *User) List(ctx context.Context) (repo.UserModels, error) {
 	return u.repo.List(ctx) //nolint:wrapcheck // To be fixed
 }
+
+// UpdatePassword updates the password of a user.
+func (u *User) UpdatePassword(ctx context.Context, name, password string) (repo.UserModel, error) {
+	hash, err := u.HashPassword(ctx, password)
+	if err != nil {
+		return repo.UserModel{}, err
+	}
+
+	userModel, err := u.repo.UpdatePassword(ctx, name, hash)
+	if err != nil {
+		return repo.UserModel{}, fmt.Errorf("failed to update password: %w", err)
+	}
+
+	return userModel, nil
+}
+
+// UpdateAccess updates the access of a user.
+func (u *User) UpdateAccess(ctx context.Context, name string, access []string) (repo.UserModel, error) {
+	userModel, err := u.repo.UpdateAccess(ctx, name, access)
+	if err != nil {
+		return repo.UserModel{}, fmt.Errorf("failed to update access: %w", err)
+	}
+
+	return userModel, nil
+}
+
+// Promote promotes a user to an admin.
+func (u *User) Promote(ctx context.Context, name string) (repo.UserModel, error) {
+	userModel, err := u.repo.Promote(ctx, name)
+	if err != nil {
+		return repo.UserModel{}, fmt.Errorf("failed to promote user: %w", err)
+	}
+
+	return userModel, nil
+}
+
+// Demote demotes a user from an admin.
+func (u *User) Demote(ctx context.Context, name string) (repo.UserModel, error) {
+	userModel, err := u.repo.Demote(ctx, name)
+	if err != nil {
+		return repo.UserModel{}, fmt.Errorf("failed to demote user: %w", err)
+	}
+
+	return userModel, nil
+}
+
+// Delete deletes a user.
+func (u *User) Delete(ctx context.Context, name string) error {
+	err := u.repo.Delete(ctx, name)
+	if err != nil {
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	return nil
+}

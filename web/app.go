@@ -47,7 +47,7 @@ func (a *App) Route() *http.ServeMux {
 
 // Start starts the HTTP server.
 func (a *App) Start(mux *http.ServeMux) {
-	srv := &http.Server{ //nolint:exhaustruct // This is a big struct
+	srv := &http.Server{
 		Addr:              ":8080",
 		Handler:           mux,
 		ReadHeaderTimeout: cancelTime,
