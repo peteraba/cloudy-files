@@ -42,6 +42,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
 github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
+github.com/monoculum/formam v3.5.5+incompatible h1:iPl5csfEN96G2N2mGu8V/ZB62XLf9ySTpC8KRH6qXec=
+github.com/monoculum/formam v3.5.5+incompatible/go.mod h1:RKgILGEJq24YyJ2ban8EO0RUVSJlF1pGsEvoLEACr/Q=
 github.com/monoculum/formam/v3 v3.6.0 h1:Lz7TOal1D8cCY2Hv1NGLdLX9Rm4xt/Gkpw4qC/RKTmc=
 github.com/monoculum/formam/v3 v3.6.0/go.mod h1:kWmkNHidfOgIjrLj2pLt+Yq9qL5MGXSl6mpKY30QV/o=
 github.com/phuslu/log v1.0.110 h1:9WQnpL1/CBi3IwZaVadYnI/i0bgobTvit2ayXIgSg4c=

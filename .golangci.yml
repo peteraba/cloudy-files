@@ -326,7 +326,7 @@ issues:
         - predeclared
         - revive
         - wsl
-    - text: "flash error"
+    - text: "flash message"
       linters:
         - godox
     - text: "CSRF"
@@ -338,6 +338,6 @@ issues:
     - text: "parse returns generic interface"
       linters:
         - ireturn
-    - path: "web/"
+    - path: "http/"
       linters:
         - exhaustruct

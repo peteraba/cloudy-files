@@ -1,11 +1,12 @@
-package web_test
+package api_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/peteraba/cloudy-files/web"
+	"github.com/peteraba/cloudy-files/http"
+	"github.com/peteraba/cloudy-files/util"
 )
 
 func TestNegotiateContentType(t *testing.T) {
@@ -25,32 +26,32 @@ func TestNegotiateContentType(t *testing.T) {
 			args: args{
 				accept: "",
 				supportedTypes: []string{
-					web.ContentTypePlain,
+					http.ContentTypePlain,
 				},
 			},
-			want: web.ContentTypePlain,
+			want: http.ContentTypePlain,
 		},
 		{
 			name: "return first found accepted type which is supported type",
 			args: args{
 				accept: "dummy, text/plain; charset=utf-8, text/html; charset=utf-8",
 				supportedTypes: []string{
-					web.ContentTypeHTML,
-					web.ContentTypeJSON,
+					http.ContentTypeHTML,
+					http.ContentTypeJSON,
 				},
 			},
-			want: web.ContentTypeHTML,
+			want: http.ContentTypeHTML,
 		},
 		{
 			name: "return first supported type in case nothing supported is matched",
 			args: args{
 				accept: "dummy, text/plai; charset=utf-8, text/htm; charset=utf-8",
 				supportedTypes: []string{
-					web.ContentTypeHTML,
-					web.ContentTypeJSON,
+					http.ContentTypeHTML,
+					http.ContentTypeJSON,
 				},
 			},
-			want: web.ContentTypeHTML,
+			want: http.ContentTypeHTML,
 		},
 	}
 	for _, tt := range tests {
@@ -58,7 +59,7 @@ func TestNegotiateContentType(t *testing.T) {
 			t.Parallel()
 
 			// setup
-			actual := web.NegotiateContentType(tt.args.accept, tt.args.supportedTypes)
+			actual := util.NegotiateContentType(tt.args.accept, tt.args.supportedTypes)
 
 			// assert
 			assert.Equal(t, tt.want, actual)

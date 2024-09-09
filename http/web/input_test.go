@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/peteraba/cloudy-files/web"
+	"github.com/peteraba/cloudy-files/http/web"
 )
 
 func header(data map[string][]string) http.Header {

@@ -7,7 +7,6 @@ import (
 
 	"github.com/phuslu/log"
 
-	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/service"
 )
 
@@ -25,27 +24,11 @@ func NewFileHandler(sessionService *service.Session, fileService *service.File, 
 	}
 }
 
-// SetupRoutes sets up the HTTP server.
-func (fh *FileHandler) SetupRoutes(mux *http.ServeMux) *http.ServeMux {
-	mux.HandleFunc("GET /files", fh.ListFiles)
-	mux.HandleFunc("DELETE /files/{id}", fh.DeleteFile)
-	mux.HandleFunc("POST /file-uploads", fh.UploadFile)
-	mux.HandleFunc("GET /file-uploads", fh.RetrieveFile)
-
-	return mux
-}
-
 // ListFiles lists files.
 func (fh *FileHandler) ListFiles(w http.ResponseWriter, r *http.Request) {
 	files, err := fh.fileService.List(r.Context(), nil, true)
 	if err != nil {
-		problem(w, r, err, fh.logger)
-
-		return
-	}
-
-	if IsJSONRequest(r) {
-		sendJSON(w, files, fh.logger)
+		Problem(w, err, fh.logger)
 
 		return
 	}
@@ -79,20 +62,5 @@ func (fh *FileHandler) ListFiles(w http.ResponseWriter, r *http.Request) {
 		strings.Join(fileHTML, ""),
 	)
 
-	sendHTML(w, tmpl, fh.logger)
-}
-
-// DeleteFile deletes a file.
-func (fh *FileHandler) DeleteFile(w http.ResponseWriter, r *http.Request) {
-	problem(w, r, apperr.ErrNotImplemented, fh.logger)
-}
-
-// UploadFile uploads a file.
-func (fh *FileHandler) UploadFile(w http.ResponseWriter, r *http.Request) {
-	problem(w, r, apperr.ErrNotImplemented, fh.logger)
-}
-
-// RetrieveFile retrieves a file.
-func (fh *FileHandler) RetrieveFile(w http.ResponseWriter, r *http.Request) {
-	problem(w, r, apperr.ErrNotImplemented, fh.logger)
+	send(w, tmpl, fh.logger)
 }

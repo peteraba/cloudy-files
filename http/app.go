@@ -1,9 +1,8 @@
-package web
+package http
 
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -19,17 +18,19 @@ const (
 
 // App represents the command line interface.
 type App struct {
-	userHandler *UserHandler
-	fileHandler *FileHandler
-	logger      *log.Logger
+	userHandler     *UserHandler
+	fileHandler     *FileHandler
+	fallbackHandler *FallbackHandler
+	logger          *log.Logger
 }
 
 // NewApp creates a new App instance.
-func NewApp(users *UserHandler, files *FileHandler, logger *log.Logger) *App {
+func NewApp(users *UserHandler, files *FileHandler, fallback *FallbackHandler, logger *log.Logger) *App {
 	return &App{
-		userHandler: users,
-		fileHandler: files,
-		logger:      logger,
+		userHandler:     users,
+		fileHandler:     files,
+		fallbackHandler: fallback,
+		logger:          logger,
 	}
 }
 
@@ -39,8 +40,7 @@ func (a *App) Route() *http.ServeMux {
 
 	a.userHandler.SetupRoutes(mux)
 	a.fileHandler.SetupRoutes(mux)
-
-	mux.HandleFunc("GET /", a.Home)
+	a.fallbackHandler.SetupRoutes(mux)
 
 	return mux
 }
@@ -75,37 +75,4 @@ func (a *App) Start(mux *http.ServeMux) {
 	}
 
 	a.logger.Info().Msg("Server shutdown failed.")
-}
-
-type HealthResponse struct {
-	Status string `json:"status"`
-}
-
-// Home is the default route.
-func (a *App) Home(w http.ResponseWriter, r *http.Request) {
-	if IsJSONRequest(r) {
-		sendJSON(w, HealthResponse{Status: "ok"}, a.logger)
-
-		return
-	}
-
-	// TODO: Generate and store CSRF token
-	csrf := "TODO"
-
-	tmpl := fmt.Sprintf(
-		`<form>
-  <fieldset>
-    <label for="nameField">Name</label>
-    <input type="text" name="username" placeholder="peter81" id="nameField">
-    <label for="passField">Password</label>
-    <input type="password" name="password" placeholder="verysecretpass" id="passField">
-    <input type="hidden" name="csrf" value="%s">
-    <input class="button-primary" type="submit" value="Send">
-  </fieldset>
-</form>
-`,
-		csrf,
-	)
-
-	sendHTML(w, tmpl, a.logger)
 }

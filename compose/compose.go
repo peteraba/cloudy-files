@@ -12,11 +12,13 @@ import (
 	"github.com/peteraba/cloudy-files/appconfig"
 	"github.com/peteraba/cloudy-files/cli"
 	"github.com/peteraba/cloudy-files/filesystem"
+	"github.com/peteraba/cloudy-files/http"
+	"github.com/peteraba/cloudy-files/http/api"
+	"github.com/peteraba/cloudy-files/http/web"
 	"github.com/peteraba/cloudy-files/password"
 	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/service"
 	"github.com/peteraba/cloudy-files/store"
-	"github.com/peteraba/cloudy-files/web"
 )
 
 // DataType represents the type of data stored in a store.
@@ -93,15 +95,62 @@ func (f *Factory) CreateCliApp() *cli.App {
 }
 
 // CreateHTTPApp creates an HTTP app.
-func (f *Factory) CreateHTTPApp() *web.App {
-	return web.NewApp(
+func (f *Factory) CreateHTTPApp() *http.App {
+	return http.NewApp(
 		f.CreateUserHandler(),
 		f.CreateFileHandler(),
+		f.CreateFallbackHandler(),
 		f.logger,
 	)
 }
 
-func (f *Factory) CreateUserHandler() *web.UserHandler {
+func (f *Factory) CreateUserHandler() *http.UserHandler {
+	return http.NewUserHandler(
+		f.CreateAPIUserHandler(),
+		f.CreateWebUserHandler(),
+		f.logger,
+	)
+}
+
+func (f *Factory) CreateFileHandler() *http.FileHandler {
+	return http.NewFileHandler(
+		f.CreateAPIFileHandler(),
+		f.CreateWebFileHandler(),
+		f.logger,
+	)
+}
+
+func (f *Factory) CreateFallbackHandler() *http.FallbackHandler {
+	return http.NewFallbackHandler(
+		f.CreateAPIFallbackHandler(),
+		f.CreateWebFallbackHandler(),
+		f.logger,
+	)
+}
+
+func (f *Factory) CreateAPIUserHandler() *api.UserHandler {
+	return api.NewUserHandler(
+		f.CreateSessionService(),
+		f.CreateUserService(),
+		f.logger,
+	)
+}
+
+func (f *Factory) CreateAPIFileHandler() *api.FileHandler {
+	return api.NewFileHandler(
+		f.CreateSessionService(),
+		f.CreateFileService(),
+		f.logger,
+	)
+}
+
+func (f *Factory) CreateAPIFallbackHandler() *api.FallbackHandler {
+	return api.NewFallbackHandler(
+		f.logger,
+	)
+}
+
+func (f *Factory) CreateWebUserHandler() *web.UserHandler {
 	return web.NewUserHandler(
 		f.CreateSessionService(),
 		f.CreateUserService(),
@@ -109,10 +158,16 @@ func (f *Factory) CreateUserHandler() *web.UserHandler {
 	)
 }
 
-func (f *Factory) CreateFileHandler() *web.FileHandler {
+func (f *Factory) CreateWebFileHandler() *web.FileHandler {
 	return web.NewFileHandler(
 		f.CreateSessionService(),
 		f.CreateFileService(),
+		f.logger,
+	)
+}
+
+func (f *Factory) CreateWebFallbackHandler() *web.FallbackHandler {
+	return web.NewFallbackHandler(
 		f.logger,
 	)
 }

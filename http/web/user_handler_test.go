@@ -15,11 +15,11 @@ import (
 	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/compose"
 	composeTest "github.com/peteraba/cloudy-files/compose/test"
+	"github.com/peteraba/cloudy-files/http/web"
 	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/store"
 	"github.com/peteraba/cloudy-files/util"
 	utilTest "github.com/peteraba/cloudy-files/util/test"
-	"github.com/peteraba/cloudy-files/web"
 )
 
 var defaultUsers = repo.UserModelMap{
@@ -68,40 +68,6 @@ func TestUserHandler_Login(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("success json", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		userStub := defaultUsers["foo"]
-		passwordStub := defaultUserPasswords["foo"]
-		loginStub := web.LoginRequest{
-			Username: userStub.Name,
-			Password: passwordStub,
-		}
-
-		handler, _, _ := setupUserHandler(t, ctx)
-
-		// setup request
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", utilTest.MustReader(t, loginStub))
-		require.NoError(t, err)
-
-		req.Header.Set(web.HeaderContentType, web.ContentTypeJSON)
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
-
-		// execute
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-
-		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
-
-		// assert
-		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Equal(t, web.ContentTypeJSONUTF8, actualContentType)
-		assert.Contains(t, actualBody, "hash")
-		assert.Contains(t, actualBody, "access")
-	})
-
 	t.Run("success html", func(t *testing.T) {
 		t.Parallel()
 
@@ -131,63 +97,10 @@ func TestUserHandler_Login(t *testing.T) {
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
-		assert.Contains(t, actualLocation, "/users")
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
 		assert.Empty(t, actualBody)
-	})
 
-	t.Run("fail json if service fails", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		loginStub := web.LoginRequest{
-			Username: "baz",
-		}
-
-		handler, _, _ := setupUserHandler(t, ctx)
-
-		// setup request
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", utilTest.MustReader(t, loginStub))
-		require.NoError(t, err)
-
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
-
-		// execute
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-
-		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
-
-		// assert
-		assert.Equal(t, http.StatusNotFound, rr.Code)
-		assert.Equal(t, web.ContentTypeJSONUTF8, actualContentType)
-		assert.Contains(t, actualBody, "Not found")
-	})
-
-	t.Run("fail json if parsing fails", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		handler, _, _ := setupUserHandler(t, ctx)
-
-		// setup request
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", strings.NewReader("invalid"))
-		require.NoError(t, err)
-
-		req.Header.Set(web.HeaderContentType, web.ContentTypeJSON)
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
-
-		// execute
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-
-		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
-
-		// assert
-		assert.Equal(t, http.StatusBadRequest, rr.Code)
-		assert.Equal(t, web.ContentTypeJSONUTF8, actualContentType)
-		assert.Contains(t, actualBody, "Bad request")
+		// TODO: assert flash message
 	})
 
 	t.Run("fail html if parsing fails", func(t *testing.T) {
@@ -212,8 +125,10 @@ func TestUserHandler_Login(t *testing.T) {
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
-		assert.NotContains(t, actualLocation, "/users")
+		assert.NotEqual(t, web.HomeRedirectLocation, actualLocation)
 		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 
 	t.Run("fail html if service fails", func(t *testing.T) {
@@ -242,8 +157,10 @@ func TestUserHandler_Login(t *testing.T) {
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
-		assert.NotContains(t, actualLocation, "/users")
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
 		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 }
 
@@ -251,39 +168,6 @@ func TestUserHandler_CreateUser(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-
-	t.Run("success json", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		userStub := repo.UserModel{
-			Name:     "baz",
-			Email:    "baz@example.com",
-			Password: "baz1234$FooBar##!",
-			IsAdmin:  false,
-			Access:   []string{"baz"},
-		}
-
-		handler, _, _ := setupUserHandler(t, ctx)
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users", utilTest.MustReader(t, userStub))
-		require.NoError(t, err)
-
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
-
-		// execute
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-
-		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
-
-		// assert
-		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, userStub.Name)
-		assert.Contains(t, actualBody, userStub.Email)
-	})
 
 	t.Run("success html", func(t *testing.T) {
 		t.Parallel()
@@ -313,8 +197,10 @@ func TestUserHandler_CreateUser(t *testing.T) {
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
-		assert.Contains(t, actualLocation, "/users")
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
 		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 
 	t.Run("fail if request is invalid", func(t *testing.T) {
@@ -329,18 +215,20 @@ func TestUserHandler_CreateUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(web.HeaderContentType)
+		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
 
 		// assert
-		assert.Equal(t, http.StatusBadRequest, responseRecorder.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, "Bad request")
+		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
+		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 
 	t.Run("fail if service fails to create user", func(t *testing.T) {
@@ -365,18 +253,20 @@ func TestUserHandler_CreateUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(web.HeaderContentType)
+		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
 
 		// assert
-		assert.Equal(t, http.StatusForbidden, responseRecorder.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, "Access denied")
+		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
+		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 }
 
@@ -384,32 +274,6 @@ func TestUserHandler_ListUsers(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-
-	t.Run("success json", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		handler, _, _ := setupUserHandler(t, ctx)
-
-		// setup request
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/users", nil)
-		require.NoError(t, err)
-
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
-
-		// execute
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-
-		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
-
-		// assert
-		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, defaultUsers["foo"].Name)
-		assert.Contains(t, actualBody, defaultUsers["bar"].Name)
-	})
 
 	t.Run("success html", func(t *testing.T) {
 		t.Parallel()
@@ -451,7 +315,7 @@ func TestUserHandler_ListUsers(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/users", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
 		// execute
 		rr := httptest.NewRecorder()
@@ -462,7 +326,7 @@ func TestUserHandler_ListUsers(t *testing.T) {
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
+		assert.Contains(t, actualContentType, web.ContentTypeHTML)
 		assert.Contains(t, actualBody, "Access denied")
 	})
 }
@@ -471,41 +335,6 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-
-	t.Run("success json", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		user := defaultUsers["bar"]
-
-		data := web.PasswordChangeRequest{
-			Username: user.Name,
-			Password: "!@iask3AI3??",
-		}
-
-		safeURL := "/users/" + url.QueryEscape(user.Name) + "/passwords"
-
-		handler, _, _ := setupUserHandler(t, ctx)
-
-		// setup request
-		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, data))
-		require.NoError(t, err)
-
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
-
-		// execute
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-
-		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
-
-		// assert
-		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, user.Name)
-		assert.Contains(t, actualBody, `"password":"$`)
-	})
 
 	t.Run("success html", func(t *testing.T) {
 		t.Parallel()
@@ -538,8 +367,10 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
-		assert.Contains(t, actualLocation, "/users")
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
 		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 
 	t.Run("fail if request is invalid", func(t *testing.T) {
@@ -557,18 +388,20 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(web.HeaderContentType)
+		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
 
 		// assert
-		assert.Equal(t, http.StatusBadRequest, responseRecorder.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, "Bad request")
+		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
+		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 
 	t.Run("fail if service fails to update user", func(t *testing.T) {
@@ -595,18 +428,20 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
+		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(web.HeaderContentType)
 
 		// assert
-		assert.Equal(t, http.StatusForbidden, responseRecorder.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, "Access denied")
+		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
+		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 }
 
@@ -614,41 +449,6 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-
-	t.Run("success json", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		user := defaultUsers["bar"]
-
-		data := web.AccessChangeRequest{
-			Username: user.Name,
-			Access:   []string{"baz"},
-		}
-
-		safeURL := "/users/" + url.QueryEscape(user.Name) + "/accesses"
-
-		handler, _, _ := setupUserHandler(t, ctx)
-
-		// setup request
-		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, data))
-		require.NoError(t, err)
-
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
-
-		// execute
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-
-		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
-
-		// assert
-		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, user.Name)
-		assert.Contains(t, actualBody, `"access":["baz"]`)
-	})
 
 	t.Run("success html", func(t *testing.T) {
 		t.Parallel()
@@ -681,8 +481,10 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
-		assert.Contains(t, actualLocation, "/users")
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
 		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 
 	t.Run("fail if request is invalid", func(t *testing.T) {
@@ -700,18 +502,20 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(web.HeaderContentType)
+		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
 
 		// assert
-		assert.Equal(t, http.StatusBadRequest, responseRecorder.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, "Bad request")
+		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
+		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 
 	t.Run("fail if service fails to update user", func(t *testing.T) {
@@ -737,18 +541,20 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
+		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(web.HeaderContentType)
 
 		// assert
-		assert.Equal(t, http.StatusForbidden, responseRecorder.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, "Access denied")
+		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
+		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 }
 
@@ -756,41 +562,6 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-
-	t.Run("success json", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		user := defaultUsers["bar"]
-		require.False(t, user.IsAdmin)
-
-		userStub := web.UserNameOnlyRequest{
-			Username: user.Name,
-		}
-
-		safeURL := "/users/" + url.QueryEscape(user.Name) + "/promotions"
-
-		handler, _, _ := setupUserHandler(t, ctx)
-
-		// setup request
-		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, userStub))
-		require.NoError(t, err)
-
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
-
-		// execute
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-
-		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
-
-		// assert
-		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, user.Name)
-		assert.Contains(t, actualBody, `"is_admin":true`)
-	})
 
 	t.Run("success html", func(t *testing.T) {
 		t.Parallel()
@@ -823,7 +594,7 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
-		assert.Contains(t, actualLocation, "/users")
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
 		assert.Empty(t, actualBody)
 	})
 
@@ -850,18 +621,20 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
+		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(web.HeaderContentType)
 
 		// assert
-		assert.Equal(t, http.StatusForbidden, responseRecorder.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, "Access denied")
+		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
+		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 }
 
@@ -889,20 +662,21 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, userStub))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
+		actualLocation := rr.Header().Get(web.HeaderLocation)
 
 		// assert
-		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, user.Name)
-		assert.Contains(t, actualBody, `"is_admin":false`)
+		assert.Equal(t, http.StatusSeeOther, rr.Code)
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
+		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 
 	t.Run("success html", func(t *testing.T) {
@@ -936,8 +710,10 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
-		assert.Contains(t, actualLocation, "/users")
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
 		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 
 	t.Run("fail if service fails to update user", func(t *testing.T) {
@@ -963,18 +739,20 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(web.HeaderContentType)
+		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
 
 		// assert
-		assert.Equal(t, http.StatusForbidden, responseRecorder.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, "Access denied")
+		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
+		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 }
 
@@ -982,28 +760,6 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-
-	t.Run("success json", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		handler, _, _ := setupUserHandler(t, ctx)
-
-		req, err := http.NewRequestWithContext(ctx, http.MethodDelete, "/users/foo", nil)
-		require.NoError(t, err)
-
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
-
-		// execute
-		rr := httptest.NewRecorder()
-		handler.ServeHTTP(rr, req)
-
-		actualBody := rr.Body.String()
-
-		// assert
-		assert.Equal(t, http.StatusNoContent, rr.Code)
-		assert.Empty(t, actualBody)
-	})
 
 	t.Run("success html", func(t *testing.T) {
 		t.Parallel()
@@ -1026,8 +782,10 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
-		assert.Contains(t, actualLocation, "/users")
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
 		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 
 	t.Run("fail if service fails to delete user", func(t *testing.T) {
@@ -1044,17 +802,19 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(web.HeaderContentType)
+		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
 
 		// assert
-		assert.Equal(t, http.StatusForbidden, responseRecorder.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeJSON)
-		assert.Contains(t, actualBody, "Access denied")
+		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
+		assert.Equal(t, web.DefaultRedirectLocation, actualLocation)
+		assert.Empty(t, actualBody)
+
+		// TODO: assert flash message
 	})
 }

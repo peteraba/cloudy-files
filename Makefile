@@ -10,5 +10,6 @@ lint:
 
 .PHONY: test
 test: lint
+	go mod tidy
 	go test -bench=. --race ./...
 	#go test -v -fuzz=. ./password

@@ -9,6 +9,7 @@ require (
 	github.com/brianvoe/gofakeit/v7 v7.0.4
 	github.com/caarlos0/env/v11 v11.2.2
 	github.com/joho/godotenv v1.5.1
+	github.com/monoculum/formam/v3 v3.6.0
 	github.com/phuslu/log v1.0.110
 	github.com/stretchr/testify v1.9.0
 	github.com/wagslane/go-password-validator v0.3.0
@@ -32,7 +33,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.30.5 // indirect
 	github.com/aws/smithy-go v1.20.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/monoculum/formam/v3 v3.6.0 // indirect
+	github.com/monoculum/formam v3.5.5+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

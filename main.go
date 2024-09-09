@@ -16,7 +16,7 @@ const storeTypeS3 = "s3"
 
 const (
 	commandCli  = "cli"
-	commandHTTP = "web"
+	commandHTTP = "http"
 )
 
 func main() {

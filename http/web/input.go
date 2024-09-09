@@ -1,7 +1,6 @@
 package web
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -23,15 +22,6 @@ func GetIPAddress(r *http.Request) string {
 }
 
 func Parse[T any](r *http.Request, into T) (T, error) {
-	if IsJSONRequest(r) {
-		err := json.NewDecoder(r.Body).Decode(&into)
-		if err != nil {
-			return *new(T), fmt.Errorf("failed to decode %T, err: %w", into, apperr.ErrBadRequest(err))
-		}
-
-		return into, nil
-	}
-
 	err := r.ParseForm()
 	if err != nil {
 		return *new(T), fmt.Errorf("failed to parse form, err: %w", apperr.ErrBadRequest(err))
