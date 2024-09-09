@@ -116,14 +116,19 @@ func (u *User) CheckPasswordHash(ctx context.Context, password, hash string) err
 
 // List lists all users.
 func (u *User) List(ctx context.Context) (repo.UserModels, error) {
-	return u.repo.List(ctx) //nolint:wrapcheck // To be fixed
+	list, err := u.repo.List(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list users: %w", err)
+	}
+
+	return list, nil
 }
 
 // UpdatePassword updates the password of a user.
 func (u *User) UpdatePassword(ctx context.Context, name, password string) (repo.UserModel, error) {
 	hash, err := u.HashPassword(ctx, password)
 	if err != nil {
-		return repo.UserModel{}, err
+		return repo.UserModel{}, fmt.Errorf("failed to hash password: %w", err)
 	}
 
 	userModel, err := u.repo.UpdatePassword(ctx, name, hash)

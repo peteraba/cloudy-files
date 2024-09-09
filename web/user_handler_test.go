@@ -164,6 +164,32 @@ func TestUserHandler_Login(t *testing.T) {
 		assert.Contains(t, actualBody, "Not found")
 	})
 
+	t.Run("fail json if parsing fails", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		handler, _, _ := setupUserHandler(t, ctx)
+
+		// setup request
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", strings.NewReader("invalid"))
+		require.NoError(t, err)
+
+		req.Header.Set(web.HeaderContentType, web.ContentTypeJSON)
+		req.Header.Set(web.HeaderAccept, web.ContentTypeJSON)
+
+		// execute
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		actualBody := rr.Body.String()
+		actualContentType := rr.Header().Get(web.HeaderContentType)
+
+		// assert
+		assert.Equal(t, http.StatusBadRequest, rr.Code)
+		assert.Equal(t, web.ContentTypeJSONUTF8, actualContentType)
+		assert.Contains(t, actualBody, "Bad request")
+	})
+
 	t.Run("fail html if parsing fails", func(t *testing.T) {
 		t.Parallel()
 

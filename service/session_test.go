@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/stretchr/testify/assert"
@@ -129,6 +130,19 @@ func TestSession_CleanUp(t *testing.T) {
 		return factory.CreateSessionService()
 	}
 
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		sut := setup(t, unusedSpy, repo.SessionModelMap{"peter": {Hash: "foobar", Expires: 0}})
+
+		// execute
+		err := sut.CleanUp(ctx)
+
+		// assert
+		require.NoError(t, err)
+	})
+
 	t.Run("fails when store returns error", func(t *testing.T) {
 		t.Parallel()
 
@@ -147,17 +161,50 @@ func TestSession_CleanUp(t *testing.T) {
 		// assert
 		assert.ErrorIs(t, err, assert.AnError)
 	})
+}
 
-	t.Run("success", func(t *testing.T) {
+func TestSession_Get(t *testing.T) {
+	t.Parallel()
+
+	unusedSpy := util.NewSpy()
+	ctx := context.Background()
+
+	setup := func(t *testing.T, sessionStoreSpy *util.Spy, sessionData repo.SessionModelMap) *service.Session {
+		t.Helper()
+
+		sessionStore := store.NewInMemory(sessionStoreSpy)
+		err := sessionStore.Marshal(ctx, sessionData)
+		require.NoError(t, err)
+
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+
+		factory.SetStore(sessionStore, compose.SessionStore)
+
+		return factory.CreateSessionService()
+	}
+
+	t.Run("fails when the session is expired", func(t *testing.T) {
 		t.Parallel()
 
+		// data
+		userName := gofakeit.Name()
+		sessionHash := gofakeit.UUID()
+		sessionData := repo.SessionModelMap{
+			userName: {
+				Hash:    sessionHash,
+				Expires: time.Now().Add(-time.Hour).Unix(),
+			},
+		}
+
 		// setup
-		sut := setup(t, unusedSpy, repo.SessionModelMap{"peter": {Hash: "foobar", Expires: 0}})
+		sut := setup(t, unusedSpy, sessionData)
 
 		// execute
-		err := sut.CleanUp(ctx)
+		newSession, err := sut.Get(ctx, userName, sessionHash)
+		require.Error(t, err)
+		require.Empty(t, newSession)
 
 		// assert
-		require.NoError(t, err)
+		assert.ErrorIs(t, err, apperr.ErrNotFound)
 	})
 }

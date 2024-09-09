@@ -33,21 +33,25 @@ const (
 
 var supportedTypes = []string{ContentTypePlain, ContentTypeJSON, ContentTypeHTML} //nolint:gochecknoglobals // This is a constant.
 
-func isJSONRequest(r *http.Request) bool {
+func IsJSONRequest(r *http.Request) bool {
 	accept := r.Header.Get(HeaderAccept)
 
-	contentType := negotiateContentType(accept, supportedTypes)
+	contentType := NegotiateContentType(accept, supportedTypes)
 
 	return contentType == ContentTypeJSON
 }
 
-func negotiateContentType(accept string, supportedTypes []string) string {
+func NegotiateContentType(accept string, supportedTypes []string) string {
 	if accept == "" {
 		// No Accept header, assume the first supported type
 		return supportedTypes[0]
 	}
 
 	// Parse the Accept header
+	// See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept
+	// Supported formats are separated by commas, with optional parameters
+	// separated by semicolons. We only care about the media type, which always
+	// comes before the semicolon.
 	acceptedTypes := strings.Split(accept, ",")
 	for _, acceptedType := range acceptedTypes {
 		mediaType := strings.TrimSpace(strings.Split(acceptedType, ";")[0])
@@ -81,7 +85,7 @@ func problem(w http.ResponseWriter, r *http.Request, err error, logger *log.Logg
 	header.Set(HeaderContentTypeOptions, "nosniff")
 	w.WriteHeader(httpError.Status)
 
-	if isJSONRequest(r) {
+	if IsJSONRequest(r) {
 		sendJSON(w, httpError, logger)
 	} else {
 		sendHTML(w, httpError, logger)

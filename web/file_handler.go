@@ -44,7 +44,7 @@ func (fh *FileHandler) ListFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if isJSONRequest(r) {
+	if IsJSONRequest(r) {
 		sendJSON(w, files, fh.logger)
 
 		return

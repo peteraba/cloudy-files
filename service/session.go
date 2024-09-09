@@ -44,7 +44,7 @@ func (s *Session) Get(ctx context.Context, name, hash string) (repo.SessionModel
 
 	now := time.Now().Unix()
 	if session.Expires < now || session.Hash != hash {
-		return repo.SessionModel{}, fmt.Errorf("invalid session. name: %s, err: %w", name, apperr.ErrAccessDenied)
+		return repo.SessionModel{}, fmt.Errorf("invalid session. name: %s, err: %w", name, apperr.ErrNotFound)
 	}
 
 	return session, nil

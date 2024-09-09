@@ -82,6 +82,18 @@ func TestGetProblem(t *testing.T) {
 			},
 		},
 		{
+			name: "validation",
+			args: args{
+				err: apperr.ErrValidation(assert.AnError.Error()),
+			},
+			want: &apperr.Problem{
+				Type:   "",
+				Title:  "Bad request",
+				Status: http.StatusBadRequest,
+				Detail: "Assert.AnError General Error For Testing, Err.",
+			},
+		},
+		{
 			name: "not implemented, wrapped",
 			args: args{
 				err: fmt.Errorf("foo, err: %w", apperr.ErrNotImplemented),
@@ -103,6 +115,29 @@ func TestGetProblem(t *testing.T) {
 
 			// assert
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestProblem_Error(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		problem *apperr.Problem
+		want    string
+	}{
+		{
+			name:    "simple",
+			problem: apperr.GetProblem(apperr.ErrAccessDenied),
+			want:    "403 Access denied Access Denied.",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, tt.problem.Error())
 		})
 	}
 }

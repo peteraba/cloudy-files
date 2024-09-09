@@ -9,7 +9,7 @@ import (
 	"github.com/peteraba/cloudy-files/appconfig"
 )
 
-func TestNewConfig(t *testing.T) {
+func TestNewConfigFromFile(t *testing.T) {
 	t.Parallel()
 
 	t.Run("success", func(t *testing.T) {
@@ -26,5 +26,14 @@ func TestNewConfig(t *testing.T) {
 		// assert
 		assert.Equal(t, "foo", cfg.StoreAwsBucket)
 		assert.Equal(t, "bar", cfg.FileSystemAwsBucket)
+	})
+
+	t.Run("panic if file can not be loaded", func(t *testing.T) {
+		t.Parallel()
+
+		// assert
+		assert.Panics(t, func() {
+			_ = appconfig.NewConfigFromFile("./.envmissing")
+		})
 	})
 }

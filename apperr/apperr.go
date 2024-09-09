@@ -31,6 +31,9 @@ var ErrNotImplemented = errors.New("not implemented")
 // errBadRequest is returned when a method is not implemented.
 var errBadRequest = errors.New("bad request")
 
+// ErrLockDoesNotExist is returned when a lock does not exist.
+var ErrLockDoesNotExist = errors.New("lock not locked")
+
 // ErrBadRequest returns a bad request error.
 func ErrBadRequest(err error) error {
 	return fmt.Errorf("%s, err: %w", err.Error(), errBadRequest)

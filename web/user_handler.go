@@ -48,7 +48,7 @@ type LoginRequest struct {
 
 // Login logs in a user.
 func (uh *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
-	if isJSONRequest(r) {
+	if IsJSONRequest(r) {
 		uh.LoginAPI(w, r)
 
 		return
@@ -59,7 +59,7 @@ func (uh *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 // LoginHTML logs in a user via the HTML form.
 func (uh *UserHandler) LoginHTML(w http.ResponseWriter, r *http.Request) {
-	loginRequest, err := parse(r, LoginRequest{})
+	loginRequest, err := Parse(r, LoginRequest{})
 	if err != nil {
 		// TODO: flash errors
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -91,7 +91,7 @@ func (uh *UserHandler) LoginHTML(w http.ResponseWriter, r *http.Request) {
 
 // LoginAPI logs in a user via the API.
 func (uh *UserHandler) LoginAPI(w http.ResponseWriter, r *http.Request) {
-	loginRequest, err := parse(r, LoginRequest{})
+	loginRequest, err := Parse(r, LoginRequest{})
 	if err != nil {
 		problem(w, r, err, uh.logger)
 
@@ -121,7 +121,7 @@ func (uh *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if isJSONRequest(r) {
+	if IsJSONRequest(r) {
 		sendJSON(w, users, uh.logger)
 
 		return
@@ -160,9 +160,9 @@ func (uh *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	userModel, err := parse(r, repo.UserModel{})
+	userModel, err := Parse(r, repo.UserModel{})
 	if err != nil {
-		problem(w, r, fmt.Errorf("failed to parse user, err: %w", apperr.ErrBadRequest(err)), uh.logger)
+		problem(w, r, fmt.Errorf("failed to Parse user, err: %w", apperr.ErrBadRequest(err)), uh.logger)
 
 		return
 	}
@@ -176,7 +176,7 @@ func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	uh.logger.Info().Str("username", userModel.Name).Msg("User created.")
 
-	if isJSONRequest(r) {
+	if IsJSONRequest(r) {
 		sendJSON(w, userModel, uh.logger)
 
 		return
@@ -196,7 +196,7 @@ type PasswordChangeRequest struct {
 
 // UpdateUserPassword updates a user's password.
 func (uh *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
-	req, err := parse(r, PasswordChangeRequest{})
+	req, err := Parse(r, PasswordChangeRequest{})
 	if err != nil {
 		problem(w, r, err, uh.logger)
 
@@ -210,7 +210,7 @@ func (uh *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if isJSONRequest(r) {
+	if IsJSONRequest(r) {
 		sendJSON(w, user, uh.logger)
 
 		return
@@ -230,7 +230,7 @@ type AccessChangeRequest struct {
 
 // UpdateUserAccess updates a user's access.
 func (uh *UserHandler) UpdateUserAccess(w http.ResponseWriter, r *http.Request) {
-	req, err := parse(r, AccessChangeRequest{})
+	req, err := Parse(r, AccessChangeRequest{})
 	if err != nil {
 		problem(w, r, err, uh.logger)
 
@@ -244,7 +244,7 @@ func (uh *UserHandler) UpdateUserAccess(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if isJSONRequest(r) {
+	if IsJSONRequest(r) {
 		sendJSON(w, user, uh.logger)
 
 		return
@@ -273,7 +273,7 @@ func (uh *UserHandler) PromoteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if isJSONRequest(r) {
+	if IsJSONRequest(r) {
 		sendJSON(w, user, uh.logger)
 
 		return
@@ -296,7 +296,7 @@ func (uh *UserHandler) DemoteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if isJSONRequest(r) {
+	if IsJSONRequest(r) {
 		sendJSON(w, user, uh.logger)
 
 		return
@@ -319,7 +319,7 @@ func (uh *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if isJSONRequest(r) {
+	if IsJSONRequest(r) {
 		w.WriteHeader(http.StatusNoContent)
 
 		return

@@ -208,6 +208,60 @@ func TestUser_Create_and_Login(t *testing.T) {
 		err = sut.CheckPasswordHash(ctx, stubPassword, passwordHash)
 		require.NoError(t, err)
 	})
+
+	t.Run("fail if user already exists", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		user := repo.UserModel{
+			Name:     "foo",
+			Email:    "foo@example.com",
+			Password: "foo123Bar321!$",
+			IsAdmin:  true,
+			Access:   []string{"foo", "bar"},
+		}
+		userData := repo.UserModelMap{
+			"foo": user,
+		}
+
+		// setup
+		sut := setup(t, unusedSpy, unusedSpy, userData, repo.SessionModelMap{})
+
+		// execute
+		newUser, err := sut.Create(ctx, user.Name, user.Email, user.Password, user.IsAdmin, user.Access)
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, newUser)
+		assert.ErrorContains(t, err, "user already exists")
+	})
+
+	t.Run("fail if session can't be started", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		stubName := gofakeit.Name()
+		stubEmail := gofakeit.Email()
+		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
+		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
+
+		// setup
+		sessionStoreSpy := util.NewSpy()
+		sessionStoreSpy.Register("ReadForWrite", 0, assert.AnError)
+		sut := setup(t, unusedSpy, sessionStoreSpy, repo.UserModelMap{}, repo.SessionModelMap{})
+
+		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
+		require.NoError(t, err)
+		require.NotEmpty(t, userModel)
+
+		// execute
+		sessionHash, err := sut.Login(ctx, stubName, stubPassword)
+		require.Error(t, err)
+		require.Empty(t, sessionHash)
+
+		// assert
+		assert.ErrorIs(t, err, assert.AnError)
+	})
 }
 
 func TestUser_CheckPassword(t *testing.T) {
@@ -335,6 +389,525 @@ func TestUser_CheckPasswordHash(t *testing.T) {
 
 		// execute
 		err := sut.CheckPasswordHash(ctx, stubPassword, stubHash)
+		require.Error(t, err)
+
+		// assert
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+}
+
+func TestUser_List(t *testing.T) {
+	t.Parallel()
+
+	unusedSpy := util.NewSpy() // DO NOT USE !!!
+	ctx := context.Background()
+
+	setup := func(t *testing.T, userStoreSpy *util.Spy) (*service.User, *store.InMemory) {
+		t.Helper()
+
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		userStoreStub := store.NewInMemory(userStoreSpy)
+
+		factory.SetStore(userStoreStub, compose.UserStore)
+
+		return factory.CreateUserService(), userStoreStub
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		data := repo.UserModelMap{
+			"foo": {
+				Name:     "foo",
+				Email:    "foo@example.com",
+				Password: "foo123Bar321!$",
+				IsAdmin:  true,
+				Access:   []string{"foo", "bar"},
+			},
+		}
+
+		// setup
+		sut, userStoreStub := setup(t, unusedSpy)
+
+		err := userStoreStub.Marshal(ctx, data)
+		require.NoError(t, err)
+
+		// execute
+		list, err := sut.List(ctx)
+		require.NoError(t, err)
+
+		// assert
+		assert.NotEmpty(t, list)
+	})
+
+	t.Run("fail if repo fails to list users", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+
+		// setup
+		userStoreSpy := util.NewSpy()
+		userStoreSpy.Register("Read", 0, assert.AnError)
+		sut, _ := setup(t, userStoreSpy)
+
+		// execute
+		list, err := sut.List(ctx)
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, list)
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+}
+
+func TestUser_UpdatePassword(t *testing.T) {
+	t.Parallel()
+
+	unusedSpy := util.NewSpy() // DO NOT USE !!!
+	ctx := context.Background()
+
+	setup := func(t *testing.T, userStoreSpy *util.Spy) (*service.User, *store.InMemory) {
+		t.Helper()
+
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		userStoreStub := store.NewInMemory(userStoreSpy)
+
+		factory.SetStore(userStoreStub, compose.UserStore)
+
+		return factory.CreateUserService(), userStoreStub
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		user := repo.UserModel{
+			Name:     "foo",
+			Email:    "foo@example.com",
+			Password: "foo123Bar321!$",
+			IsAdmin:  false,
+			Access:   []string{"foo", "bar"},
+		}
+
+		// setup
+		sut, userStoreStub := setup(t, unusedSpy)
+
+		err := userStoreStub.Marshal(ctx, repo.UserModelMap{"foo": user})
+		require.NoError(t, err)
+
+		// execute
+		newUser, err := sut.UpdatePassword(ctx, "foo", "bar723!@#Rab")
+		require.NoError(t, err)
+
+		// assert
+		assert.NotEmpty(t, newUser)
+	})
+
+	t.Run("fail if hashing password fails", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		sut, _ := setup(t, unusedSpy)
+
+		// execute
+		user, err := sut.UpdatePassword(ctx, "foo", "bar")
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, user)
+		assert.ErrorContains(t, err, "failed to hash password")
+	})
+
+	t.Run("fail if repo doesn't have the user to update", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		sut, userStoreStub := setup(t, unusedSpy)
+
+		err := userStoreStub.Marshal(ctx, repo.UserModelMap{})
+		require.NoError(t, err)
+
+		// execute
+		user, err := sut.UpdatePassword(ctx, "foo", "bar723!@#Rab?")
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, user)
+		assert.ErrorContains(t, err, "failed to update password")
+	})
+
+	t.Run("fail when repo fails to update", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		user := repo.UserModel{
+			Name:     "foo",
+			Email:    "foo@example.com",
+			Password: "foo123Bar321!$",
+			IsAdmin:  false,
+			Access:   []string{"foo", "bar"},
+		}
+
+		// setup
+		userStoreSpy := util.NewSpy()
+		userStoreSpy.Register("ReadForWrite", 0, apperr.ErrAccessDenied)
+		sut, userStoreStub := setup(t, userStoreSpy)
+
+		err := userStoreStub.Marshal(ctx, repo.UserModelMap{"foo": user})
+		require.NoError(t, err)
+
+		// execute
+		newUser, err := sut.UpdatePassword(ctx, "foo", "bar723!@#Rab")
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, newUser)
+		assert.ErrorIs(t, err, apperr.ErrAccessDenied)
+	})
+}
+
+func TestUser_UpdateAccess(t *testing.T) {
+	t.Parallel()
+
+	unusedSpy := util.NewSpy() // DO NOT USE !!!
+	ctx := context.Background()
+
+	setup := func(t *testing.T, userStoreSpy *util.Spy) (*service.User, *store.InMemory) {
+		t.Helper()
+
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		userStoreStub := store.NewInMemory(userStoreSpy)
+
+		factory.SetStore(userStoreStub, compose.UserStore)
+
+		return factory.CreateUserService(), userStoreStub
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		user := repo.UserModel{
+			Name:     "foo",
+			Email:    "foo@example.com",
+			Password: "foo123Bar321!$",
+			IsAdmin:  false,
+			Access:   []string{"foo", "bar"},
+		}
+		data := repo.UserModelMap{
+			"foo": user,
+		}
+
+		// setup
+		sut, userStoreStub := setup(t, unusedSpy)
+
+		err := userStoreStub.Marshal(ctx, data)
+		require.NoError(t, err)
+
+		// execute
+		newUser, err := sut.UpdateAccess(ctx, user.Name, user.Access)
+		require.NoError(t, err)
+
+		// assert
+		assert.NotEmpty(t, newUser)
+	})
+
+	t.Run("fail if repo doesn't have the user to update", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		sut, userStoreStub := setup(t, unusedSpy)
+
+		err := userStoreStub.Marshal(ctx, repo.UserModelMap{})
+		require.NoError(t, err)
+
+		// execute
+		user, err := sut.UpdateAccess(ctx, "foo", nil)
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, user)
+	})
+}
+
+func TestUser_Promote(t *testing.T) {
+	t.Parallel()
+
+	unusedSpy := util.NewSpy() // DO NOT USE !!!
+	ctx := context.Background()
+
+	setup := func(t *testing.T, userStoreSpy *util.Spy) (*service.User, *store.InMemory) {
+		t.Helper()
+
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		userStoreStub := store.NewInMemory(userStoreSpy)
+
+		factory.SetStore(userStoreStub, compose.UserStore)
+
+		return factory.CreateUserService(), userStoreStub
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		data := repo.UserModelMap{
+			"foo": {
+				Name:     "foo",
+				Email:    "foo@example.com",
+				Password: "foo123Bar321!$",
+				IsAdmin:  false,
+				Access:   []string{"foo", "bar"},
+			},
+		}
+
+		// setup
+		sut, userStoreStub := setup(t, unusedSpy)
+
+		err := userStoreStub.Marshal(ctx, data)
+		require.NoError(t, err)
+
+		// execute
+		user, err := sut.Promote(ctx, data["foo"].Name)
+		require.NoError(t, err)
+
+		// assert
+		assert.NotEmpty(t, user)
+	})
+
+	t.Run("fail to promote admin user", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		data := repo.UserModelMap{
+			"foo": {
+				Name:     "foo",
+				Email:    "foo@example.com",
+				Password: "foo123Bar321!$",
+				IsAdmin:  true,
+				Access:   []string{"foo", "bar"},
+			},
+		}
+
+		// setup
+		sut, userStoreStub := setup(t, unusedSpy)
+
+		err := userStoreStub.Marshal(ctx, data)
+		require.NoError(t, err)
+
+		// execute
+		user, err := sut.Promote(ctx, data["foo"].Name)
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, user)
+		assert.ErrorContains(t, err, "user is already an admin")
+	})
+
+	t.Run("fail if repo fails to promote user", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		userStoreSpy := util.NewSpy()
+		userStoreSpy.Register("ReadForWrite", 0, assert.AnError)
+		sut, _ := setup(t, userStoreSpy)
+
+		// execute
+		user, err := sut.Promote(ctx, "foo")
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, user)
+	})
+
+	t.Run("fail if repo doesn't have the user to promote", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		sut, userStoreStub := setup(t, unusedSpy)
+
+		err := userStoreStub.Marshal(ctx, repo.UserModelMap{})
+		require.NoError(t, err)
+
+		// execute
+		user, err := sut.Promote(ctx, "foo")
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, user)
+	})
+}
+
+func TestUser_Demote(t *testing.T) {
+	t.Parallel()
+
+	unusedSpy := util.NewSpy() // DO NOT USE !!!
+	ctx := context.Background()
+
+	setup := func(t *testing.T, userStoreSpy *util.Spy) (*service.User, *store.InMemory) {
+		t.Helper()
+
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		userStoreStub := store.NewInMemory(userStoreSpy)
+
+		factory.SetStore(userStoreStub, compose.UserStore)
+
+		return factory.CreateUserService(), userStoreStub
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		data := repo.UserModelMap{
+			"foo": {
+				Name:     "foo",
+				Email:    "foo@example.com",
+				Password: "foo123Bar321!$",
+				IsAdmin:  true,
+				Access:   []string{"foo", "bar"},
+			},
+		}
+
+		// setup
+		sut, userStoreStub := setup(t, unusedSpy)
+
+		err := userStoreStub.Marshal(ctx, data)
+		require.NoError(t, err)
+
+		// execute
+		user, err := sut.Demote(ctx, data["foo"].Name)
+		require.NoError(t, err)
+
+		// assert
+		assert.NotEmpty(t, user)
+	})
+
+	t.Run("fail to demote normal user", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		data := repo.UserModelMap{
+			"foo": {
+				Name:     "foo",
+				Email:    "foo@example.com",
+				Password: "foo123Bar321!$",
+				IsAdmin:  false,
+				Access:   []string{"foo", "bar"},
+			},
+		}
+
+		// setup
+		sut, userStoreStub := setup(t, unusedSpy)
+
+		err := userStoreStub.Marshal(ctx, data)
+		require.NoError(t, err)
+
+		// execute
+		user, err := sut.Demote(ctx, data["foo"].Name)
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, user)
+		assert.ErrorContains(t, err, "user is not an admin")
+	})
+
+	t.Run("fail if repo fails to demote user", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+
+		// setup
+		userStoreSpy := util.NewSpy()
+		userStoreSpy.Register("ReadForWrite", 0, assert.AnError)
+		sut, _ := setup(t, userStoreSpy)
+
+		// execute
+		user, err := sut.Demote(ctx, "foo")
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, user)
+	})
+
+	t.Run("fail if repo doesn't have the user to promote", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		sut, userStoreStub := setup(t, unusedSpy)
+
+		err := userStoreStub.Marshal(ctx, repo.UserModelMap{})
+		require.NoError(t, err)
+
+		// execute
+		user, err := sut.Demote(ctx, "foo")
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, user)
+	})
+}
+
+func TestUser_Delete(t *testing.T) {
+	t.Parallel()
+
+	unusedSpy := util.NewSpy() // DO NOT USE !!!
+	ctx := context.Background()
+
+	setup := func(t *testing.T, userStoreSpy *util.Spy) (*service.User, *store.InMemory) {
+		t.Helper()
+
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		userStoreStub := store.NewInMemory(userStoreSpy)
+
+		factory.SetStore(userStoreStub, compose.UserStore)
+
+		return factory.CreateUserService(), userStoreStub
+	}
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		data := repo.UserModelMap{
+			"foo": {
+				Name:     "foo",
+				Email:    "foo@example.com",
+				Password: "foo123Bar321!$",
+				IsAdmin:  true,
+				Access:   []string{"foo", "bar"},
+			},
+		}
+
+		// setup
+		sut, userStoreStub := setup(t, unusedSpy)
+
+		err := userStoreStub.Marshal(ctx, data)
+		require.NoError(t, err)
+
+		// execute
+		err = sut.Delete(ctx, data["foo"].Name)
+		require.NoError(t, err)
+
+		// assert
+		actualList, err := sut.List(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, actualList)
+	})
+
+	t.Run("fail if service fails to delete user", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+
+		// setup
+		userStoreSpy := util.NewSpy()
+		userStoreSpy.Register("ReadForWrite", 0, assert.AnError)
+		sut, _ := setup(t, userStoreSpy)
+
+		// execute
+		err := sut.Delete(ctx, "foo")
 		require.Error(t, err)
 
 		// assert

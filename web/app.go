@@ -83,7 +83,7 @@ type HealthResponse struct {
 
 // Home is the default route.
 func (a *App) Home(w http.ResponseWriter, r *http.Request) {
-	if isJSONRequest(r) {
+	if IsJSONRequest(r) {
 		sendJSON(w, HealthResponse{Status: "ok"}, a.logger)
 
 		return

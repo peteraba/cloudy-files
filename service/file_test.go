@@ -211,6 +211,160 @@ func TestFile_Upload_and_Get(t *testing.T) {
 		assert.Equal(t, stubFileName, fileModel.Name)
 		assert.Equal(t, stubAccess, fileModel.Access)
 	})
+
+	t.Run("fail if repo fails getting file", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
+		stubFileName := gofakeit.Adjective() + "." + gofakeit.FileExtension()
+		stubData := gofakeit.HipsterSentence(10)
+
+		// setup
+		fileStoreSpy := util.NewSpy()
+		fileStoreSpy.Register("Read", 0, assert.AnError)
+
+		sut := setup(t, fileStoreSpy, unusedSpy, repo.FileModelMap{})
+
+		// execute
+		fileModel, err := sut.Upload(ctx, stubFileName, []byte(stubData), stubAccess)
+		require.NoError(t, err)
+		require.Equal(t, stubFileName, fileModel.Name)
+
+		fileModel, err = sut.Get(ctx, stubFileName)
+		require.Error(t, err)
+		require.Empty(t, fileModel.Name)
+
+		// assert
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+}
+
+func TestFile_Upload_and_List(t *testing.T) {
+	t.Parallel()
+
+	unusedSpy := util.NewSpy()
+	ctx := context.Background()
+
+	setup := func(t *testing.T, fileStoreSpy, fsStoreSpy *util.Spy, fileStoreData repo.FileModelMap) *service.File {
+		t.Helper()
+
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+
+		{
+			fsStore := filesystem.NewInMemory(fsStoreSpy)
+			factory.SetFileSystem(fsStore)
+		}
+
+		{
+			fileStore := store.NewInMemory(fileStoreSpy)
+			err := fileStore.Marshal(ctx, fileStoreData)
+			require.NoError(t, err)
+			factory.SetStore(fileStore, compose.FileStore)
+		}
+
+		return factory.CreateFileService()
+	}
+
+	t.Run("can upload a file and list models as admin", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		stubAccess := []string{}
+		stubFileName := gofakeit.Adjective() + "." + gofakeit.FileExtension()
+		stubData := gofakeit.HipsterSentence(10)
+
+		// setup
+		sut := setup(t, unusedSpy, unusedSpy, repo.FileModelMap{})
+
+		// execute
+		fileModel, err := sut.Upload(ctx, stubFileName, []byte(stubData), stubAccess)
+		require.NoError(t, err)
+		require.Equal(t, stubFileName, fileModel.Name)
+
+		fileModels, err := sut.List(ctx, nil, true)
+		require.NoError(t, err)
+		require.Equal(t, stubFileName, fileModel.Name)
+
+		// assert
+		assert.Len(t, fileModels, 1)
+		assert.Equal(t, stubFileName, fileModels[0].Name)
+		assert.Equal(t, stubAccess, fileModels[0].Access)
+	})
+
+	t.Run("can upload a file and list models as non-admin", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
+		stubFileName := gofakeit.Adjective() + "." + gofakeit.FileExtension()
+		stubData := gofakeit.HipsterSentence(10)
+
+		// setup
+		sut := setup(t, unusedSpy, unusedSpy, repo.FileModelMap{})
+
+		// execute
+		fileModel, err := sut.Upload(ctx, stubFileName, []byte(stubData), stubAccess)
+		require.NoError(t, err)
+		require.Equal(t, stubFileName, fileModel.Name)
+
+		fileModels, err := sut.List(ctx, []string{stubAccess[0]}, false)
+		require.NoError(t, err)
+		require.Equal(t, stubFileName, fileModel.Name)
+
+		// assert
+		assert.Len(t, fileModels, 1)
+		assert.Equal(t, stubFileName, fileModels[0].Name)
+		assert.Equal(t, stubAccess, fileModels[0].Access)
+	})
+
+	t.Run("as non-admin only files with matching access are returned", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
+		stubFileName := gofakeit.Adjective() + "." + gofakeit.FileExtension()
+		stubData := gofakeit.HipsterSentence(10)
+
+		// setup
+		sut := setup(t, unusedSpy, unusedSpy, repo.FileModelMap{})
+
+		// execute
+		fileModel1, err := sut.Upload(ctx, stubFileName, []byte(stubData), stubAccess[1:])
+		require.NoError(t, err)
+		require.Equal(t, stubFileName, fileModel1.Name)
+
+		fileModel2, err := sut.Upload(ctx, stubFileName, []byte(stubData), stubAccess)
+		require.NoError(t, err)
+		require.Equal(t, stubFileName, fileModel2.Name)
+
+		fileModels, err := sut.List(ctx, []string{stubAccess[0]}, false)
+		require.NoError(t, err)
+		require.Equal(t, stubFileName, fileModel2.Name)
+
+		// assert
+		assert.Len(t, fileModels, 1)
+		assert.Equal(t, stubFileName, fileModels[0].Name)
+		assert.Equal(t, stubAccess, fileModels[0].Access)
+	})
+
+	t.Run("fail if listing fails", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		fileStoreSpy := util.NewSpy()
+		fileStoreSpy.Register("Read", 0, assert.AnError)
+
+		// setup
+		sut := setup(t, fileStoreSpy, unusedSpy, repo.FileModelMap{})
+
+		// execute
+		fileModels, err := sut.List(ctx, []string{}, false)
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, fileModels)
+	})
 }
 
 func TestFile_Upload_and_Retrieve(t *testing.T) {

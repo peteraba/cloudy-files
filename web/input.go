@@ -10,8 +10,20 @@ import (
 	"github.com/peteraba/cloudy-files/apperr"
 )
 
-func parse[T any](r *http.Request, into T) (T, error) {
-	if isJSONRequest(r) {
+func GetIPAddress(r *http.Request) string {
+	if r.Header.Get(HeaderXRealIP) != "" {
+		return r.Header.Get(HeaderXRealIP)
+	}
+
+	if r.Header.Get(HeaderXForwardedFor) != "" {
+		return r.Header.Get(HeaderXForwardedFor)
+	}
+
+	return r.RemoteAddr
+}
+
+func Parse[T any](r *http.Request, into T) (T, error) {
+	if IsJSONRequest(r) {
 		err := json.NewDecoder(r.Body).Decode(&into)
 		if err != nil {
 			return *new(T), fmt.Errorf("failed to decode %T, err: %w", into, apperr.ErrBadRequest(err))

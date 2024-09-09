@@ -3,10 +3,10 @@ package store
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sync"
 
+	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/util"
 )
 
@@ -86,8 +86,6 @@ func (i *InMemory) Marshal(ctx context.Context, raw interface{}) error {
 	return i.Write(ctx, data)
 }
 
-var ErrLockDoesNotExist = errors.New("lock not locked")
-
 // WriteLocked writes data to the file after acquiring a lock
 // used in pair with ReadForWrite.
 // It returns an error if the lock file does not exist.
@@ -99,7 +97,7 @@ func (i *InMemory) WriteLocked(_ context.Context, data []byte) error {
 	if i.m.TryLock() {
 		i.m.Unlock()
 
-		return ErrLockDoesNotExist
+		return apperr.ErrLockDoesNotExist
 	}
 
 	i.data = data
@@ -124,6 +122,10 @@ func (i *InMemory) lock() {
 
 // Unlock removes the lock.
 func (i *InMemory) Unlock(_ context.Context) error {
+	if err := i.spy.GetError("Unlock"); err != nil {
+		return err
+	}
+
 	i.m.Unlock()
 
 	return nil
