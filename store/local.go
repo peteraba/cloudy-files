@@ -105,17 +105,15 @@ func (l *Local) Write(ctx context.Context, data []byte) error {
 func (l *Local) WriteLocked(ctx context.Context, data []byte) error {
 	// Checking if the lock file exists
 	_, err := os.Stat(l.lockFileName)
+	// Truly unexpected error
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("error checking lock file: %s, err: %w", l.lockFileName, err)
+		}
 
-	// Unexpected error
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("error checking lock file: %s, err: %w", l.lockFileName, err)
-	}
-	defer l.Unlock(ctx)
-
-	// Lock file does not exist (it should)
-	if err != nil && os.IsNotExist(err) {
 		return fmt.Errorf("lock file does not exist: %s, err: %w", l.lockFileName, err)
 	}
+	defer l.Unlock(ctx)
 
 	// Writing the file
 	l.logger.Debug().Str("method", "WriteLocked").Msg("writing file")
@@ -186,10 +184,10 @@ func (l *Local) Unlock(_ context.Context) error {
 	// Checking if the lock file exists
 	_, err := os.Stat(l.lockFileName)
 	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("error checking lock file: %s, err: %w", l.lockFileName, err)
-	}
+		if !os.IsNotExist(err) {
+			return fmt.Errorf("error checking lock file: %s, err: %w", l.lockFileName, err)
+		}
 
-	if err != nil && os.IsNotExist(err) {
 		return fmt.Errorf("lock file does not exist: %s, err: %w", l.lockFileName, err)
 	}
 

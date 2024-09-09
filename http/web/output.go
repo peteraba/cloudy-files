@@ -25,7 +25,7 @@ const (
 	ContentTypeForm     = "application/x-www-form-urlencoded"
 )
 
-func Problem(w http.ResponseWriter, err error, logger *log.Logger) {
+func Problem(w http.ResponseWriter, logger *log.Logger, err error) {
 	logger.Error().Err(err).Msg("Error")
 
 	problem := apperr.GetProblem(err)

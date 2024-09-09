@@ -52,7 +52,7 @@ func send(w http.ResponseWriter, content interface{}, logger *log.Logger) {
 
 	payload, err := json.Marshal(content)
 	if err != nil {
-		logger.Error().Err(err).Msg("Error during rendering JSON.")
+		logger.Error().Err(err).Msg("Error during marshaling JSON.")
 
 		return
 	}

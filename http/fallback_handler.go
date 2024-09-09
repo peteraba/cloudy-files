@@ -38,5 +38,5 @@ func (fh *FallbackHandler) Home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fh.web.Home(w)
+	fh.web.Home(w, r)
 }

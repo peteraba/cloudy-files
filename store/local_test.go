@@ -44,6 +44,7 @@ func TestLocal_Write_and_Read(t *testing.T) {
 
 	t.Run("fail to read if lock is stuck", func(t *testing.T) {
 		t.Parallel()
+
 		dataFileName := gofakeit.UUID()
 		defer cleanUp(t, dataFileName)
 
@@ -69,6 +70,7 @@ func TestLocal_Write_and_Read(t *testing.T) {
 
 	t.Run("fail to write if lock is stuck", func(t *testing.T) {
 		t.Parallel()
+
 		dataFileName := gofakeit.UUID()
 		defer cleanUp(t, dataFileName)
 
@@ -93,6 +95,7 @@ func TestLocal_Write_and_Read(t *testing.T) {
 
 	t.Run("simple write-read success", func(t *testing.T) {
 		t.Parallel()
+
 		dataFileName := gofakeit.UUID()
 		defer cleanUp(t, dataFileName)
 
@@ -116,6 +119,7 @@ func TestLocal_Write_and_Read(t *testing.T) {
 
 	t.Run("simultaneous read success", func(t *testing.T) {
 		t.Parallel()
+
 		dataFileName := gofakeit.UUID()
 		defer cleanUp(t, dataFileName)
 
@@ -184,6 +188,7 @@ func TestLocal_ReadForWrite_and_WriteLocked(t *testing.T) {
 
 	t.Run("fail to read for write if lock is stuck", func(t *testing.T) {
 		t.Parallel()
+
 		dataFileName := gofakeit.UUID()
 		defer cleanUp(t, dataFileName)
 
@@ -209,6 +214,7 @@ func TestLocal_ReadForWrite_and_WriteLocked(t *testing.T) {
 
 	t.Run("lock can be unlocked manually", func(t *testing.T) {
 		t.Parallel()
+
 		dataFileName := gofakeit.UUID()
 		defer cleanUp(t, dataFileName)
 
@@ -230,6 +236,7 @@ func TestLocal_ReadForWrite_and_WriteLocked(t *testing.T) {
 
 	t.Run("simple write locked success", func(t *testing.T) {
 		t.Parallel()
+
 		dataFileName := gofakeit.UUID()
 		defer cleanUp(t, dataFileName)
 
@@ -253,6 +260,7 @@ func TestLocal_ReadForWrite_and_WriteLocked(t *testing.T) {
 
 	t.Run("attempt to write between read for write and write will wait", func(t *testing.T) {
 		t.Parallel()
+
 		dataFileName := gofakeit.UUID()
 		defer cleanUp(t, dataFileName)
 
@@ -294,5 +302,25 @@ func TestLocal_ReadForWrite_and_WriteLocked(t *testing.T) {
 
 		// assert
 		assert.Equal(t, expected, data)
+	})
+
+	t.Run("fail to write locked without lock", func(t *testing.T) {
+		t.Parallel()
+
+		dataFileName := gofakeit.UUID()
+		defer cleanUp(t, dataFileName)
+
+		// data
+		stubData := []byte("stub data")
+
+		// setup
+		sut, _ := setup(t, dataFileName, stubData)
+
+		// execute
+		err := sut.WriteLocked(context.Background(), stubData)
+		require.Error(t, err)
+
+		// assert
+		assert.ErrorContains(t, err, "lock file does not exist")
 	})
 }

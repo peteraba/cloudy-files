@@ -5,21 +5,38 @@ import (
 	"net/http"
 
 	"github.com/phuslu/log"
+
+	"github.com/peteraba/cloudy-files/repo"
+	"github.com/peteraba/cloudy-files/util"
 )
 
+// FallbackHandler handles fallback requests.
 type FallbackHandler struct {
-	logger *log.Logger
+	csrfRepo *repo.CSRF
+	logger   *log.Logger
 }
 
-func NewFallbackHandler(logger *log.Logger) *FallbackHandler {
+// NewFallbackHandler creates a new FallbackHandler.
+func NewFallbackHandler(csrfRepo *repo.CSRF, logger *log.Logger) *FallbackHandler {
 	return &FallbackHandler{
-		logger: logger,
+		csrfRepo: csrfRepo,
+		logger:   logger,
 	}
 }
 
-func (fh *FallbackHandler) Home(w http.ResponseWriter) {
-	// TODO: Generate and store CSRF token
-	csrf := "TODO"
+const tokenLength = 32
+
+func (fh *FallbackHandler) Home(w http.ResponseWriter, r *http.Request) {
+	ipAddress := GetIPAddress(r)
+
+	token, err := util.RandomHex(tokenLength)
+	if err != nil {
+		Problem(w, fh.logger, err)
+
+		return
+	}
+
+	csrf := fh.csrfRepo.Create(r.Context(), ipAddress, token)
 
 	tmpl := fmt.Sprintf(
 		`<form>

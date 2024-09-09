@@ -31,13 +31,15 @@ const (
 	UserStore
 	// FileStore represents a store for file data.
 	FileStore
+	// CSRFStore represents a store for CSRF data.
+	CSRFStore = 3
 )
 
 // Factory is a factory for creating services.
 type Factory struct {
 	mutex                  *sync.RWMutex
 	fileSystemInstance     service.FileSystem
-	stores                 [3]repo.Store
+	stores                 [4]repo.Store
 	passwordHasherInstance service.PasswordHasher
 	s3Client               *s3.Client
 	appConfig              *appconfig.Config
@@ -45,14 +47,14 @@ type Factory struct {
 	logger                 *log.Logger
 }
 
-var filePaths = [...]string{"sessions.json", "users.json", "files.json"} //nolint:gochecknoglobals // This is a constant
+var filePaths = [...]string{"sessions.json", "users.json", "files.json", "csrf.json"} //nolint:gochecknoglobals // This is a constant
 
 // NewFactory creates a new factory.
 func NewFactory(appConfig *appconfig.Config) *Factory {
 	return &Factory{
 		mutex:                  &sync.RWMutex{},
 		fileSystemInstance:     nil,
-		stores:                 [...]repo.Store{nil, nil, nil},
+		stores:                 [...]repo.Store{nil, nil, nil, nil},
 		passwordHasherInstance: nil,
 		s3Client:               nil,
 		appConfig:              appConfig,
@@ -151,9 +153,12 @@ func (f *Factory) CreateAPIFallbackHandler() *api.FallbackHandler {
 }
 
 func (f *Factory) CreateWebUserHandler() *web.UserHandler {
+	csrfRepo := f.GetStore(CSRFStore)
+
 	return web.NewUserHandler(
 		f.CreateSessionService(),
 		f.CreateUserService(),
+		f.CreateCSRFRepo(csrfRepo),
 		f.logger,
 	)
 }
@@ -167,7 +172,10 @@ func (f *Factory) CreateWebFileHandler() *web.FileHandler {
 }
 
 func (f *Factory) CreateWebFallbackHandler() *web.FallbackHandler {
+	csrfRepo := f.GetStore(CSRFStore)
+
 	return web.NewFallbackHandler(
+		f.CreateCSRFRepo(csrfRepo),
 		f.logger,
 	)
 }
@@ -182,8 +190,8 @@ func (f *Factory) GetS3Client() *s3.Client {
 
 // CreateFileService creates a file service.
 func (f *Factory) CreateFileService() *service.File {
-	fileStore := f.getStore(FileStore)
-	fileRepo := f.createFileRepo(fileStore)
+	fileStore := f.GetStore(FileStore)
+	fileRepo := f.CreateFileRepo(fileStore)
 
 	fsStore := f.getFileSystem()
 
@@ -192,10 +200,10 @@ func (f *Factory) CreateFileService() *service.File {
 
 // CreateUserService creates a user service.
 func (f *Factory) CreateUserService() *service.User {
-	userStore := f.getStore(UserStore)
-	userRepo := f.createUserRepo(userStore)
-	sessionStore := f.getStore(SessionStore)
-	sessionRepo := f.createSessionRepo(sessionStore)
+	userStore := f.GetStore(UserStore)
+	userRepo := f.CreateUserRepo(userStore)
+	sessionStore := f.GetStore(SessionStore)
+	sessionRepo := f.CreateSessionRepo(sessionStore)
 	hasher := f.getHasher()
 	rawChecker := f.createRawPasswordChecker()
 
@@ -204,8 +212,8 @@ func (f *Factory) CreateUserService() *service.User {
 
 // CreateSessionService creates a session service.
 func (f *Factory) CreateSessionService() *service.Session {
-	sessionStore := f.getStore(SessionStore)
-	sessionRepo := f.createSessionRepo(sessionStore)
+	sessionStore := f.GetStore(SessionStore)
+	sessionRepo := f.CreateSessionRepo(sessionStore)
 
 	return service.NewSession(sessionRepo, *f.logger)
 }
@@ -241,7 +249,7 @@ func (f *Factory) SetFileSystem(fs service.FileSystem) {
 	f.fileSystemInstance = fs
 }
 
-func (f *Factory) getStore(dataType DataType) repo.Store {
+func (f *Factory) GetStore(dataType DataType) repo.Store {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
 
@@ -273,15 +281,20 @@ func (f *Factory) SetStore(storeInstance repo.Store, dataType DataType) {
 	f.stores[dataType] = storeInstance
 }
 
-func (f *Factory) createFileRepo(fileStore repo.Store) *repo.File {
+// CreateCSRFRepo creates a CSRF repository.
+func (f *Factory) CreateCSRFRepo(csrfStore repo.Store) *repo.CSRF {
+	return repo.NewCSRF(csrfStore)
+}
+
+func (f *Factory) CreateFileRepo(fileStore repo.Store) *repo.File {
 	return repo.NewFile(fileStore)
 }
 
-func (f *Factory) createUserRepo(userStore repo.Store) *repo.User {
+func (f *Factory) CreateUserRepo(userStore repo.Store) *repo.User {
 	return repo.NewUser(userStore)
 }
 
-func (f *Factory) createSessionRepo(sessionStore repo.Store) *repo.Session {
+func (f *Factory) CreateSessionRepo(sessionStore repo.Store) *repo.Session {
 	return repo.NewSession(sessionStore)
 }
 
@@ -316,14 +329,7 @@ func (f *Factory) GetLogger() *log.Logger {
 	return f.logger
 }
 
-// SetLogger sets the logger for the factory.
-func (f *Factory) SetLogger(logger *log.Logger) {
-	f.mutex.Lock()
-	defer f.mutex.Unlock()
-
-	f.logger = logger
-}
-
+// GetDisplay returns the display.
 func (f *Factory) GetDisplay() cli.Display {
 	f.mutex.RLock()
 	defer f.mutex.RUnlock()
@@ -335,6 +341,7 @@ func (f *Factory) GetDisplay() cli.Display {
 	return f.display
 }
 
+// SetDisplay sets the display for the factory.
 func (f *Factory) SetDisplay(display cli.Display) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()

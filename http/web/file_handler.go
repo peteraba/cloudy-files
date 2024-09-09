@@ -28,7 +28,7 @@ func NewFileHandler(sessionService *service.Session, fileService *service.File, 
 func (fh *FileHandler) ListFiles(w http.ResponseWriter, r *http.Request) {
 	files, err := fh.fileService.List(r.Context(), nil, true)
 	if err != nil {
-		Problem(w, err, fh.logger)
+		Problem(w, fh.logger, err)
 
 		return
 	}

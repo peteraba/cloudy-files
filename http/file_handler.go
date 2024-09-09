@@ -52,5 +52,5 @@ func (fh *FileHandler) NotImplemented(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	web.Problem(w, apperr.ErrNotImplemented, fh.logger)
+	web.Problem(w, fh.logger, apperr.ErrNotImplemented)
 }

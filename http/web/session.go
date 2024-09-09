@@ -5,42 +5,30 @@ import (
 	"net/http"
 
 	"github.com/phuslu/log"
-
-	"github.com/peteraba/cloudy-files/apperr"
 )
 
-// FlashError sets up a temporary session message for an error.
+// FlashError sets up logMsgWithArgs temporary session message for an error.
 func FlashError(w http.ResponseWriter, logger *log.Logger, err error, msg string, args ...interface{}) {
 	_ = w
 
-	problem := apperr.GetProblem(err)
-
-	e := logger.Error().Err(err).Int("status", problem.Status)
-
-	for i, arg := range args {
-		if stringer, ok := arg.(fmt.Stringer); ok {
-			e.Stringer(fmt.Sprintf("arg%d", i), stringer)
-		} else {
-			e.Interface(fmt.Sprintf("arg%d", i), arg)
-		}
-	}
-
-	e.Msg(msg)
+	logMsgWithArgs(logger.Error().Err(err), msg, args...)
 }
 
-// FlashMessage sets up a temporary session message.
+// FlashMessage sets up logMsgWithArgs temporary session message.
 func FlashMessage(w http.ResponseWriter, logger *log.Logger, msg string, args ...interface{}) {
 	_ = w
 
-	e := logger.Info()
+	logMsgWithArgs(logger.Info(), msg, args...)
+}
 
+func logMsgWithArgs(entry *log.Entry, msg string, args ...interface{}) {
 	for i, arg := range args {
 		if stringer, ok := arg.(fmt.Stringer); ok {
-			e.Stringer(fmt.Sprintf("arg%d", i), stringer)
+			entry.Stringer(fmt.Sprintf("arg%d", i), stringer)
 		} else {
-			e.Interface(fmt.Sprintf("arg%d", i), arg)
+			entry.Interface(fmt.Sprintf("arg%d", i), arg)
 		}
 	}
 
-	e.Msg(msg)
+	entry.Msg(msg)
 }

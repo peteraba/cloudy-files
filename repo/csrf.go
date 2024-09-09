@@ -60,32 +60,6 @@ func (c *CSRF) getData() ([]byte, error) {
 	return data, nil
 }
 
-// Exists checks if a CSRF token exists.
-func (c *CSRF) Exists(ctx context.Context, ipAddress, token string) (bool, error) {
-	err := c.read(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	now := time.Now().Unix()
-
-	ipAddressCsrf, ok := c.entries[ipAddress]
-	if !ok {
-		return false, nil
-	}
-
-	for _, csrfModel := range ipAddressCsrf {
-		if csrfModel.Token == token && csrfModel.Expires > now {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
 // Create creates a new user.
 func (c *CSRF) Create(ctx context.Context, ipAddress, token string) error {
 	err := c.readForWrite(ctx)
@@ -112,6 +86,32 @@ func (c *CSRF) Create(ctx context.Context, ipAddress, token string) error {
 	}
 
 	return nil
+}
+
+// Exists checks if a CSRF token exists.
+func (c *CSRF) Exists(ctx context.Context, ipAddress, token string) (bool, error) {
+	err := c.read(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	now := time.Now().Unix()
+
+	ipAddressCsrf, ok := c.entries[ipAddress]
+	if !ok {
+		return false, nil
+	}
+
+	for _, csrfModel := range ipAddressCsrf {
+		if csrfModel.Token == token && csrfModel.Expires > now {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // readForWrite reads the session data from the store and creates entries.

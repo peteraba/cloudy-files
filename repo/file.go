@@ -140,7 +140,7 @@ func (f *File) readForWrite(ctx context.Context) error {
 func (f *File) writeAfterRead(ctx context.Context) error {
 	data, err := f.getData()
 	if err != nil {
-		return fmt.Errorf("error getting data: %w", err)
+		return fmt.Errorf("error creating raw data: %w", err)
 	}
 
 	err = f.store.WriteLocked(ctx, data)

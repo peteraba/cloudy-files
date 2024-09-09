@@ -16,28 +16,32 @@ const (
 	HomeRedirectLocation    = "/"
 )
 
+// UserHandler handles user requests.
 type UserHandler struct {
 	sessionService *service.Session
 	userService    *service.User
+	csrfRepo       *repo.CSRF
 	logger         *log.Logger
 }
 
-func NewUserHandler(sessionService *service.Session, userService *service.User, logger *log.Logger) *UserHandler {
+// NewUserHandler creates logMsgWithArgs new UserHandler.
+func NewUserHandler(sessionService *service.Session, userService *service.User, csrfRepo *repo.CSRF, logger *log.Logger) *UserHandler {
 	return &UserHandler{
 		sessionService: sessionService,
 		userService:    userService,
+		csrfRepo:       csrfRepo,
 		logger:         logger,
 	}
 }
 
-// LoginRequest represents a password change request.
+// LoginRequest represents logMsgWithArgs password change request.
 type LoginRequest struct {
 	Username string `json:"username" formam:"username"`
 	Password string `json:"password" formam:"password"`
 	CSRF     string `json:"-"        formam:"csrf"`
 }
 
-// Login logs in a user via the HTML form.
+// Login logs in logMsgWithArgs user via the HTML form.
 func (uh *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// TODO: CSRF protection
 	loginRequest, err := Parse(r, LoginRequest{})
@@ -49,7 +53,7 @@ func (uh *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// attempt to start a new session with the login credentials
+	// attempt to start logMsgWithArgs new session with the login credentials
 	session, err := uh.userService.Login(r.Context(), loginRequest.Username, loginRequest.Password)
 	if err != nil {
 		FlashError(w, uh.logger, err, "Login failed.", session)
@@ -66,7 +70,7 @@ func (uh *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		uh.logger.Error().Err(err).Msg("Failed to list users.")
 
-		Problem(w, err, uh.logger)
+		Problem(w, uh.logger, err)
 
 		return
 	}
@@ -122,14 +126,14 @@ func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, DefaultRedirectLocation, http.StatusSeeOther)
 }
 
-// PasswordChangeRequest represents a password change request.
+// PasswordChangeRequest represents logMsgWithArgs password change request.
 type PasswordChangeRequest struct {
 	Username string `json:"username" formam:"username"`
 	Password string `json:"password" formam:"password"`
 	CSRF     string `json:"-"        formam:"csrf"`
 }
 
-// UpdateUserPassword updates a user's password.
+// UpdateUserPassword updates logMsgWithArgs user's password.
 func (uh *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
 	// TODO: CSRF protection
 	req, err := Parse(r, PasswordChangeRequest{})
@@ -158,7 +162,7 @@ type AccessChangeRequest struct {
 	CSRF     string   `json:"-"        formam:"csrf"`
 }
 
-// UpdateUserAccess updates a user's access.
+// UpdateUserAccess updates logMsgWithArgs user's access.
 func (uh *UserHandler) UpdateUserAccess(w http.ResponseWriter, r *http.Request) {
 	// TODO: CSRF protection
 	req, err := Parse(r, AccessChangeRequest{})
@@ -180,13 +184,13 @@ func (uh *UserHandler) UpdateUserAccess(w http.ResponseWriter, r *http.Request) 
 	http.Redirect(w, r, DefaultRedirectLocation, http.StatusSeeOther)
 }
 
-// UserNameOnlyRequest represents a request where the username is the only mandatory field.
+// UserNameOnlyRequest represents logMsgWithArgs request where the username is the only mandatory field.
 type UserNameOnlyRequest struct {
 	Username string `json:"username" formam:"username"`
 	CSRF     string `json:"-"        formam:"csrf"`
 }
 
-// PromoteUser promotes a user to admin.
+// PromoteUser promotes logMsgWithArgs user to admin.
 func (uh *UserHandler) PromoteUser(w http.ResponseWriter, r *http.Request) {
 	// TODO: CSRF protection
 	ctx := r.Context()
@@ -202,7 +206,7 @@ func (uh *UserHandler) PromoteUser(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, DefaultRedirectLocation, http.StatusSeeOther)
 }
 
-// DemoteUser demotes a user from admin.
+// DemoteUser demotes logMsgWithArgs user from admin.
 func (uh *UserHandler) DemoteUser(w http.ResponseWriter, r *http.Request) {
 	// TODO: CSRF protection
 	ctx := r.Context()
@@ -218,7 +222,7 @@ func (uh *UserHandler) DemoteUser(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, DefaultRedirectLocation, http.StatusSeeOther)
 }
 
-// DeleteUser deletes a user.
+// DeleteUser deletes logMsgWithArgs user.
 func (uh *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	// TODO: CSRF protection
 	ctx := r.Context()

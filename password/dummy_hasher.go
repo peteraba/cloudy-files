@@ -2,7 +2,10 @@ package password
 
 import (
 	"context"
+	"fmt"
+	"slices"
 
+	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/util"
 )
 
@@ -24,13 +27,23 @@ func (b DummyHasher) Hash(_ context.Context, password string) (string, error) {
 		return "", err
 	}
 
-	return password, nil
+	r := []rune(password)
+	slices.Reverse(r)
+
+	return string(r), nil
 }
 
 // Check checks if the provided password is correct or not.
 func (b DummyHasher) Check(_ context.Context, password, hashedPassword string) error {
 	if err := b.spy.GetError("Check", password, hashedPassword); err != nil {
 		return err
+	}
+
+	r := []rune(password)
+	slices.Reverse(r)
+
+	if string(r) != hashedPassword {
+		return fmt.Errorf("password is incorrect: %w", apperr.ErrPasswordTooLong)
 	}
 
 	return nil

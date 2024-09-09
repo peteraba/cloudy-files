@@ -118,3 +118,34 @@ func TestFileHandler_ListFiles(t *testing.T) {
 		assert.Contains(t, actualBody, "Access denied")
 	})
 }
+
+func TestFileHandler_NotImplemented(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	t.Run("delete", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		handler, _, _ := setupFileHandler(t)
+
+		// setup request
+		req, err := http.NewRequestWithContext(ctx, http.MethodDelete, "/files/foo", nil)
+		require.NoError(t, err)
+
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+
+		// execute
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		actualBody := rr.Body.String()
+		actualContentType := rr.Header().Get(web.HeaderContentType)
+
+		// assert
+		assert.Equal(t, http.StatusNotFound, rr.Code)
+		assert.Contains(t, actualContentType, web.ContentTypeHTML)
+		assert.Contains(t, actualBody, "</html>")
+	})
+}

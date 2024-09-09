@@ -16,15 +16,27 @@ var defaultSessionTime = time.Minute * 30
 // SessionModel represents a session model.
 type SessionModel struct {
 	Hash    string   `json:"hash"`
-	IsAdmin bool     `json:"is_admin"`
-	Expires int64    `json:"expires"`
-	Access  []string `json:"access"`
+	IsAdmin bool     `json:"is_admin,omitempty"`
+	Expires int64    `json:"expires,omitempty"`
+	Access  []string `json:"access,omitempty"`
 }
 
 // SessionModels represents a session model list.
 type SessionModels []SessionModel
 
+// SessionModelMap represents a session model map.
 type SessionModelMap map[string]SessionModel
+
+// Slice returns the session models as a slice.
+func (s SessionModelMap) Slice() SessionModels {
+	result := SessionModels{}
+
+	for _, value := range s {
+		result = append(result, value)
+	}
+
+	return result
+}
 
 // Store represents a session store.
 type Store interface {

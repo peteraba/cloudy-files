@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v7"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/peteraba/cloudy-files/appconfig"
@@ -53,6 +54,25 @@ func TestLocal_Write_and_Read(t *testing.T) {
 		require.NoError(t, err)
 
 		// assert
-		require.Equal(t, stubData, data)
+		assert.Equal(t, stubData, data)
+	})
+
+	t.Run("fail if file is missing", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		stubFileName := "bar"
+
+		// setup
+		sut := setup(t, gofakeit.UUID())
+		ctx := context.Background()
+
+		// execute
+		data, err := sut.Read(ctx, stubFileName)
+		require.Error(t, err)
+		require.Empty(t, data)
+
+		// assert
+		assert.ErrorContains(t, err, "error reading file")
 	})
 }

@@ -22,6 +22,9 @@ var ErrLockTimeout = errors.New("lock timeout")
 // ErrPasswordTooLong is returned when the password is too long.
 var ErrPasswordTooLong = errors.New("password is too long")
 
+// ErrPasswordMismatch is returned when the password does not match.
+var ErrPasswordMismatch = errors.New("password does not match")
+
 // ErrInvalidArgument is returned when a method is called with an invalid argument.
 var ErrInvalidArgument = errors.New("invalid argument")
 
