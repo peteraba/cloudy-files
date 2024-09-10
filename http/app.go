@@ -5,8 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/phuslu/log"
@@ -54,7 +52,6 @@ func (a *App) Start(mux *http.ServeMux) {
 	}
 
 	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		a.logger.Info().Str("addr", srv.Addr).Msg("HTTP server starting.")
