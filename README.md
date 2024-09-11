@@ -19,3 +19,12 @@ authorization is still travelling through the wire, instead of being looked up o
 case someone manages to steal your cookie, they can potentially impersonate you.
 
 This decision was deliberate to keep the application simple and to avoid the need for a database.
+
+## TODO
+
+- [ ] Add missing HTML endpoints
+- [ ] CSRF protection for all POST/PUT/DELETE web requests
+- [ ] Bearer token protection for API requests
+- [ ] Test API server
+- [ ] Test web server
+- [ ] Add lambda support
