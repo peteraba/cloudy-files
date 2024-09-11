@@ -7,15 +7,16 @@ import (
 	"github.com/monoculum/formam/v3"
 
 	"github.com/peteraba/cloudy-files/apperr"
+	"github.com/peteraba/cloudy-files/http/inandout"
 )
 
 func GetIPAddress(r *http.Request) string {
-	if r.Header.Get(HeaderXRealIP) != "" {
-		return r.Header.Get(HeaderXRealIP)
+	if r.Header.Get(inandout.HeaderXRealIP) != "" {
+		return r.Header.Get(inandout.HeaderXRealIP)
 	}
 
-	if r.Header.Get(HeaderXForwardedFor) != "" {
-		return r.Header.Get(HeaderXForwardedFor)
+	if r.Header.Get(inandout.HeaderXForwardedFor) != "" {
+		return r.Header.Get(inandout.HeaderXForwardedFor)
 	}
 
 	return r.RemoteAddr
@@ -28,7 +29,7 @@ func Parse[T any](r *http.Request, into T) (T, error) {
 	}
 
 	if len(r.Form) == 0 {
-		return *new(T), fmt.Errorf("content type: %s, err: %w", r.Header.Get(HeaderContentType), apperr.ErrEmptyForm)
+		return *new(T), fmt.Errorf("content type: %s, err: %w", r.Header.Get(inandout.HeaderContentType), apperr.ErrEmptyForm)
 	}
 
 	decoder := formam.NewDecoder(&formam.DecoderOptions{TagName: "formam"})

@@ -16,6 +16,7 @@ import (
 	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/compose"
 	composeTest "github.com/peteraba/cloudy-files/compose/test"
+	"github.com/peteraba/cloudy-files/http/inandout"
 	"github.com/peteraba/cloudy-files/http/web"
 	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/store"
@@ -122,8 +123,8 @@ func TestUserHandler_Login(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", strings.NewReader(formDataStub.Encode()))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 		req.RemoteAddr = ipAddressStub
 
 		// execute
@@ -131,7 +132,7 @@ func TestUserHandler_Login(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
@@ -151,8 +152,8 @@ func TestUserHandler_Login(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", strings.NewReader("invalid"))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 		req.RemoteAddr = ipAddressStub
 
 		// execute
@@ -160,7 +161,7 @@ func TestUserHandler_Login(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
@@ -194,8 +195,8 @@ func TestUserHandler_Login(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", strings.NewReader(formDataStub.Encode()))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 		req.RemoteAddr = ipAddressStub
 
 		// execute
@@ -203,7 +204,7 @@ func TestUserHandler_Login(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
@@ -244,8 +245,8 @@ func TestUserHandler_Login(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", strings.NewReader(formDataStub.Encode()))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 		req.RemoteAddr = ipAddressStub
 
 		// execute
@@ -253,7 +254,7 @@ func TestUserHandler_Login(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
@@ -285,8 +286,8 @@ func TestUserHandler_CreateUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users", strings.NewReader(formData.Encode()))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -294,7 +295,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -317,13 +318,13 @@ func TestUserHandler_CreateUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
+		actualLocation := responseRecorder.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
@@ -344,8 +345,8 @@ func TestUserHandler_CreateUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: false})
 
@@ -353,7 +354,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -376,7 +377,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -384,7 +385,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
+		actualLocation := responseRecorder.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
@@ -398,12 +399,10 @@ func TestUserHandler_CreateUser(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		userStub := repo.UserModel{
-			Name:     "baz",
-			Email:    "baz@example.com",
-			Password: "baz1234$FooBar##!",
-			IsAdmin:  false,
-			Access:   []string{"baz"},
+		formData := url.Values{
+			"name":     {"baz"},
+			"email":    {"baz@example.com"},
+			"password": {"baz1234$FooBar##!"},
 		}
 
 		handler, userStoreStub, _ := setupUserHandler(t, ctx)
@@ -411,12 +410,13 @@ func TestUserHandler_CreateUser(t *testing.T) {
 		userStoreStub.GetSpy().Register("ReadForWrite", 0, apperr.ErrAccessDenied)
 
 		// setup request
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users", utilTest.MustReader(t, userStub))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users", strings.NewReader(formData.Encode()))
 		require.NoError(t, err)
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -424,7 +424,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
+		actualLocation := responseRecorder.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
@@ -450,7 +450,7 @@ func TestUserHandler_ListUsers(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/users", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -459,11 +459,11 @@ func TestUserHandler_ListUsers(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeHTML)
+		assert.Contains(t, actualContentType, inandout.ContentTypeHTML)
 		assert.Contains(t, actualBody, "</html>")
 		assert.Contains(t, actualBody, defaultUsers["foo"].Name)
 		assert.Contains(t, actualBody, defaultUsers["bar"].Name)
@@ -479,18 +479,18 @@ func TestUserHandler_ListUsers(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/users", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeHTML)
+		assert.Contains(t, actualContentType, inandout.ContentTypeHTML)
 		assert.Contains(t, actualBody, "</html>")
 		assert.Contains(t, actualBody, "Access denied")
 	})
@@ -505,7 +505,7 @@ func TestUserHandler_ListUsers(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/users", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: false})
 
@@ -514,11 +514,11 @@ func TestUserHandler_ListUsers(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeHTML)
+		assert.Contains(t, actualContentType, inandout.ContentTypeHTML)
 		assert.Contains(t, actualBody, "</html>")
 		assert.Contains(t, actualBody, "Access denied")
 	})
@@ -536,7 +536,7 @@ func TestUserHandler_ListUsers(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/users", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -545,11 +545,11 @@ func TestUserHandler_ListUsers(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeHTML)
+		assert.Contains(t, actualContentType, inandout.ContentTypeHTML)
 		assert.Contains(t, actualBody, "Access denied")
 	})
 }
@@ -578,8 +578,8 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, strings.NewReader(formData.Encode()))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -587,7 +587,7 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -612,14 +612,14 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -649,8 +649,8 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, strings.NewReader(formData.Encode()))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: false})
 
@@ -658,7 +658,7 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -684,8 +684,8 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -693,7 +693,7 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
+		actualLocation := responseRecorder.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
@@ -726,15 +726,15 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
-		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
+		actualLocation := responseRecorder.Header().Get(inandout.HeaderLocation)
 		actualBody := responseRecorder.Body.String()
 
 		// assert
@@ -770,8 +770,8 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, strings.NewReader(formData.Encode()))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -779,7 +779,7 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -809,14 +809,14 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, strings.NewReader(formData.Encode()))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -846,8 +846,8 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, strings.NewReader(formData.Encode()))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: false})
 
@@ -855,7 +855,7 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -881,7 +881,7 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -889,7 +889,7 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
+		actualLocation := responseRecorder.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
@@ -906,8 +906,9 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 		user := defaultUsers["bar"]
 		require.False(t, user.IsAdmin)
 
-		userStub := web.UserNameOnlyRequest{
-			Username: user.Name,
+		formData := url.Values{
+			"username": {user.Name},
+			"access":   {"baz"},
 		}
 
 		safeURL := "/users/" + url.QueryEscape(user.Name) + "/accesses"
@@ -917,19 +918,20 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 		userStoreStub.GetSpy().Register("ReadForWrite", 0, apperr.ErrAccessDenied)
 
 		// setup request
-		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, userStub))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, strings.NewReader(formData.Encode()))
 		require.NoError(t, err)
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
-		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
+		actualLocation := responseRecorder.Header().Get(inandout.HeaderLocation)
 		actualBody := responseRecorder.Body.String()
 
 		// assert
@@ -965,8 +967,8 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, strings.NewReader(formData.Encode()))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -974,7 +976,7 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -1002,14 +1004,14 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, strings.NewReader(formData.Encode()))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -1037,8 +1039,8 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, strings.NewReader(formData.Encode()))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
-		req.Header.Set(web.HeaderContentType, web.ContentTypeForm)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeForm)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: false})
 
@@ -1046,7 +1048,7 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -1078,14 +1080,14 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
-		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
+		actualLocation := responseRecorder.Header().Get(inandout.HeaderLocation)
 		actualBody := responseRecorder.Body.String()
 
 		// assert
@@ -1121,7 +1123,7 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, userStub))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -1130,7 +1132,7 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
@@ -1159,14 +1161,14 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, userStub))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
@@ -1195,7 +1197,7 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, userStub))
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: false})
 
@@ -1204,7 +1206,7 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, rr.Code)
@@ -1237,7 +1239,7 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -1245,7 +1247,7 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
+		actualLocation := responseRecorder.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)
@@ -1271,7 +1273,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodDelete, "/users/foo", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -1279,7 +1281,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -1300,13 +1302,13 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodDelete, "/users/foo", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -1327,7 +1329,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodDelete, "/users/foo", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: false})
 
@@ -1335,7 +1337,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
-		actualLocation := rr.Header().Get(web.HeaderLocation)
+		actualLocation := rr.Header().Get(inandout.HeaderLocation)
 		actualBody := rr.Body.String()
 
 		// assert
@@ -1360,7 +1362,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -1368,7 +1370,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualLocation := responseRecorder.Header().Get(web.HeaderLocation)
+		actualLocation := responseRecorder.Header().Get(inandout.HeaderLocation)
 
 		// assert
 		assert.Equal(t, http.StatusSeeOther, responseRecorder.Code)

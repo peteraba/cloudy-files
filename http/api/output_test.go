@@ -1,68 +1,33 @@
 package api_test
 
 import (
+	"net/http/httptest"
+	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/phuslu/log"
 
-	"github.com/peteraba/cloudy-files/http"
-	"github.com/peteraba/cloudy-files/util"
+	"github.com/peteraba/cloudy-files/http/api"
 )
 
-func TestNegotiateContentType(t *testing.T) {
+func TestSend(t *testing.T) {
 	t.Parallel()
 
-	type args struct {
-		accept         string
-		supportedTypes []string
-	}
-	tests := []struct {
-		name string
-		args args
-		want string
-	}{
-		{
-			name: "empty accept returns first supported type",
-			args: args{
-				accept: "",
-				supportedTypes: []string{
-					http.ContentTypePlain,
-				},
-			},
-			want: http.ContentTypePlain,
-		},
-		{
-			name: "return first found accepted type which is supported type",
-			args: args{
-				accept: "dummy, text/plain; charset=utf-8, text/html; charset=utf-8",
-				supportedTypes: []string{
-					http.ContentTypeHTML,
-					http.ContentTypeJSON,
-				},
-			},
-			want: http.ContentTypeHTML,
-		},
-		{
-			name: "return first supported type in case nothing supported is matched",
-			args: args{
-				accept: "dummy, text/plai; charset=utf-8, text/htm; charset=utf-8",
-				supportedTypes: []string{
-					http.ContentTypeHTML,
-					http.ContentTypeJSON,
-				},
-			},
-			want: http.ContentTypeHTML,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
+	t.Run("nil content", func(t *testing.T) {
+		t.Parallel()
 
-			// setup
-			actual := util.NegotiateContentType(tt.args.accept, tt.args.supportedTypes)
+		recorder := httptest.NewRecorder()
+		nomarshal := make(chan struct{})
+		logger := &log.Logger{
+			Level:        log.PanicLevel,
+			Caller:       0,
+			TimeField:    "",
+			TimeFormat:   "",
+			TimeLocation: nil,
+			Context:      nil,
+			Writer:       log.IOWriter{Writer: os.Stderr},
+		}
 
-			// assert
-			assert.Equal(t, tt.want, actual)
-		})
-	}
+		api.Send(recorder, nomarshal, logger)
+	})
 }

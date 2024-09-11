@@ -55,5 +55,5 @@ func (fh *FallbackHandler) Home(w http.ResponseWriter, r *http.Request) {
 		token,
 	)
 
-	send(w, tmpl)
+	Send(w, tmpl)
 }

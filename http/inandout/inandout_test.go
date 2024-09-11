@@ -1,4 +1,4 @@
-package util_test
+package inandout_test
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/peteraba/cloudy-files/http"
-	"github.com/peteraba/cloudy-files/util"
+	"github.com/peteraba/cloudy-files/http/inandout"
 )
 
 func TestNegotiateContentType(t *testing.T) {
@@ -59,7 +59,7 @@ func TestNegotiateContentType(t *testing.T) {
 			t.Parallel()
 
 			// setup
-			actual := util.NegotiateContentType(tt.args.accept, tt.args.supportedTypes)
+			actual := inandout.NegotiateContentType(tt.args.accept, tt.args.supportedTypes)
 
 			// assert
 			assert.Equal(t, tt.want, actual)

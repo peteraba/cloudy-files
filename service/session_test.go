@@ -13,7 +13,7 @@ import (
 	"github.com/peteraba/cloudy-files/appconfig"
 	"github.com/peteraba/cloudy-files/apperr"
 	composeTest "github.com/peteraba/cloudy-files/compose/test"
-	"github.com/peteraba/cloudy-files/http/web"
+	"github.com/peteraba/cloudy-files/http/inandout"
 	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/service"
 )
@@ -40,7 +40,7 @@ func TestCookie_FlashError(t *testing.T) {
 		sut.FlashError(recorder, req, "/", assert.AnError, "baz", 17)
 
 		// setup assert
-		actualLocation := recorder.Header().Get(web.HeaderLocation)
+		actualLocation := recorder.Header().Get(inandout.HeaderLocation)
 
 		req.Header.Set("Cookie", recorder.Header().Get("Set-Cookie"))
 
@@ -82,7 +82,7 @@ func TestCookie_FlashMessage(t *testing.T) {
 		sut.FlashMessage(recorder, req, "/", "baz", baz(17))
 
 		// setup assert
-		actualLocation := recorder.Header().Get(web.HeaderLocation)
+		actualLocation := recorder.Header().Get(inandout.HeaderLocation)
 
 		req.Header.Set("Cookie", recorder.Header().Get("Set-Cookie"))
 

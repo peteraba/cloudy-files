@@ -13,7 +13,7 @@ import (
 	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/compose"
 	composeTest "github.com/peteraba/cloudy-files/compose/test"
-	"github.com/peteraba/cloudy-files/http/web"
+	"github.com/peteraba/cloudy-files/http/inandout"
 	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/store"
 	"github.com/peteraba/cloudy-files/util"
@@ -60,7 +60,7 @@ func TestFileHandler_ListFiles(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/files", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -69,11 +69,11 @@ func TestFileHandler_ListFiles(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeHTML)
+		assert.Contains(t, actualContentType, inandout.ContentTypeHTML)
 		assert.Contains(t, actualBody, "</html>")
 		assert.Contains(t, actualBody, fileNameStub)
 		assert.Contains(t, actualBody, accessStub[0])
@@ -90,18 +90,18 @@ func TestFileHandler_ListFiles(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/files", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeHTML)
+		assert.Contains(t, actualContentType, inandout.ContentTypeHTML)
 		assert.Contains(t, actualBody, "</html>")
 		assert.Contains(t, actualBody, "Access denied")
 	})
@@ -116,7 +116,7 @@ func TestFileHandler_ListFiles(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/files", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: false})
 
@@ -125,11 +125,11 @@ func TestFileHandler_ListFiles(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeHTML)
+		assert.Contains(t, actualContentType, inandout.ContentTypeHTML)
 		assert.Contains(t, actualBody, "</html>")
 		assert.Contains(t, actualBody, "Access denied")
 	})
@@ -156,7 +156,7 @@ func TestFileHandler_ListFiles(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/files", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
@@ -165,11 +165,11 @@ func TestFileHandler_ListFiles(t *testing.T) {
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeHTML)
+		assert.Contains(t, actualContentType, inandout.ContentTypeHTML)
 		assert.Contains(t, actualBody, "Access denied")
 	})
 }
@@ -189,18 +189,18 @@ func TestFileHandler_NotImplemented(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodDelete, "/files/foo", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeHTML)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(web.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusNotFound, rr.Code)
-		assert.Contains(t, actualContentType, web.ContentTypeHTML)
+		assert.Contains(t, actualContentType, inandout.ContentTypeHTML)
 		assert.Contains(t, actualBody, "</html>")
 	})
 }

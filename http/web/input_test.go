@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/peteraba/cloudy-files/http/inandout"
 	"github.com/peteraba/cloudy-files/http/web"
 )
 
@@ -49,7 +50,7 @@ func TestGetIPAddress(t *testing.T) {
 			name: "x-forwarded-for",
 			request: &http.Request{
 				Header: header(map[string][]string{
-					web.HeaderXForwardedFor: {ipStub},
+					inandout.HeaderXForwardedFor: {ipStub},
 				}),
 				RemoteAddr: ipStub2,
 			},
@@ -59,8 +60,8 @@ func TestGetIPAddress(t *testing.T) {
 			name: "x-real-ip",
 			request: &http.Request{
 				Header: header(map[string][]string{
-					web.HeaderXForwardedFor: {ipStub2},
-					web.HeaderXRealIP:       {ipStub},
+					inandout.HeaderXForwardedFor: {ipStub2},
+					inandout.HeaderXRealIP:       {ipStub},
 				}),
 				RemoteAddr: ipStub2,
 			},

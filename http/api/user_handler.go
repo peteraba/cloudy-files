@@ -50,7 +50,7 @@ func (uh *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Str("username", loginRequest.Username).
 		Msg("Login successful.")
 
-	send(w, session, uh.logger)
+	Send(w, session, uh.logger)
 }
 
 func (uh *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
@@ -62,7 +62,7 @@ func (uh *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	send(w, users, uh.logger)
+	Send(w, users, uh.logger)
 }
 
 func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
@@ -83,7 +83,7 @@ func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	uh.logger.Info().Str("username", userModel.Name).Msg("User created.")
 
-	send(w, userModel, uh.logger)
+	Send(w, userModel, uh.logger)
 }
 
 // PasswordChangeRequest represents a password change request.
@@ -110,7 +110,7 @@ func (uh *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	send(w, user, uh.logger)
+	Send(w, user, uh.logger)
 }
 
 // AccessChangeRequest represents an access change request.
@@ -137,7 +137,7 @@ func (uh *UserHandler) UpdateUserAccess(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	send(w, user, uh.logger)
+	Send(w, user, uh.logger)
 }
 
 // UserNameOnlyRequest represents a request where the username is the only mandatory field.
@@ -159,7 +159,7 @@ func (uh *UserHandler) PromoteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	send(w, user, uh.logger)
+	Send(w, user, uh.logger)
 }
 
 // DemoteUser demotes a user from admin.
@@ -175,7 +175,7 @@ func (uh *UserHandler) DemoteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	send(w, user, uh.logger)
+	Send(w, user, uh.logger)
 }
 
 // DeleteUser deletes a user.

@@ -7,18 +7,7 @@ import (
 	"github.com/phuslu/log"
 
 	"github.com/peteraba/cloudy-files/apperr"
-)
-
-const (
-	HeaderContentType        = "Content-Type"
-	HeaderAccept             = "Accept"
-	HeaderContentLength      = "Content-Length"
-	HeaderContentTypeOptions = "X-Content-Type-Options"
-)
-
-const (
-	ContentTypeJSON     = "application/json"
-	ContentTypeJSONUTF8 = "application/json; charset=utf-8"
+	"github.com/peteraba/cloudy-files/http/inandout"
 )
 
 func Problem(w http.ResponseWriter, err error, logger *log.Logger) {
@@ -35,16 +24,16 @@ func Problem(w http.ResponseWriter, err error, logger *log.Logger) {
 	// We don't delete Content-Encoding, because some middleware sets
 	// Content-Encoding: gzip and wraps the ResponseWriter to compress on-the-fly.
 	// See https://go.dev/issue/66343.
-	header.Del(HeaderContentLength)
+	header.Del(inandout.HeaderContentLength)
 
-	header.Set(HeaderContentTypeOptions, "nosniff")
+	header.Set(inandout.HeaderContentTypeOptions, "nosniff")
 	w.WriteHeader(problem.Status)
 
-	send(w, problem, logger)
+	Send(w, problem, logger)
 }
 
-func send(w http.ResponseWriter, content interface{}, logger *log.Logger) {
-	w.Header().Set(HeaderContentType, ContentTypeJSONUTF8)
+func Send(w http.ResponseWriter, content interface{}, logger *log.Logger) {
+	w.Header().Set(inandout.HeaderContentType, inandout.ContentTypeJSONUTF8)
 
 	if content == nil {
 		return
@@ -57,10 +46,5 @@ func send(w http.ResponseWriter, content interface{}, logger *log.Logger) {
 		return
 	}
 
-	_, err = w.Write(payload)
-	if err != nil {
-		logger.Error().Err(err).Msg("Error during writing content.")
-
-		return
-	}
+	w.Write(payload) //nolint:errcheck // We don't care about the error here.
 }

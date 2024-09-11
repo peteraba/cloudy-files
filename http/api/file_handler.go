@@ -30,5 +30,5 @@ func (fh *FileHandler) ListFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	send(w, files, fh.logger)
+	Send(w, files, fh.logger)
 }

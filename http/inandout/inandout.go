@@ -1,6 +1,26 @@
-package util
+package inandout
 
-import "strings"
+import (
+	"strings"
+)
+
+const (
+	HeaderAccept             = "Accept"
+	HeaderContentLength      = "Content-Length"
+	HeaderContentType        = "Content-Type"
+	HeaderLocation           = "Location"
+	HeaderContentTypeOptions = "X-Content-Type-Options"
+	HeaderXForwardedFor      = "X-Forwarded-For"
+	HeaderXRealIP            = "X-Real-IP"
+)
+
+const (
+	ContentTypeJSON     = "application/json"
+	ContentTypeJSONUTF8 = "application/json; charset=utf-8"
+	ContentTypeHTML     = "text/html"
+	ContentTypeHTMLUTF8 = "text/html; charset=utf-8"
+	ContentTypeForm     = "application/x-www-form-urlencoded"
+)
 
 func NegotiateContentType(accept string, supportedTypes []string) string {
 	if accept == "" {

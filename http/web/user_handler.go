@@ -128,7 +128,7 @@ func (uh *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		strings.Join(userHTML, ""),
 	)
 
-	send(w, tmpl)
+	Send(w, tmpl)
 }
 
 // CreateUser creates a new user and redirects to the users list page.

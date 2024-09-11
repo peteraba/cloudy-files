@@ -7,22 +7,7 @@ import (
 	"github.com/phuslu/log"
 
 	"github.com/peteraba/cloudy-files/apperr"
-)
-
-const (
-	HeaderContentType        = "Content-Type"
-	HeaderAccept             = "Accept"
-	HeaderLocation           = "Location"
-	HeaderContentLength      = "Content-Length"
-	HeaderContentTypeOptions = "X-Content-Type-Options"
-	HeaderXRealIP            = "X-Real-IP"
-	HeaderXForwardedFor      = "X-Forwarded-For"
-)
-
-const (
-	ContentTypeHTMLUTF8 = "text/html; charset=utf-8"
-	ContentTypeHTML     = "text/html"
-	ContentTypeForm     = "application/x-www-form-urlencoded"
+	"github.com/peteraba/cloudy-files/http/inandout"
 )
 
 func Problem(w http.ResponseWriter, logger *log.Logger, err error) {
@@ -39,16 +24,16 @@ func Problem(w http.ResponseWriter, logger *log.Logger, err error) {
 	// We don't delete Content-Encoding, because some middleware sets
 	// Content-Encoding: gzip and wraps the ResponseWriter to compress on-the-fly.
 	// See https://go.dev/issue/66343.
-	header.Del(HeaderContentLength)
+	header.Del(inandout.HeaderContentLength)
 
-	header.Set(HeaderContentTypeOptions, "nosniff")
+	header.Set(inandout.HeaderContentTypeOptions, "nosniff")
 	w.WriteHeader(problem.Status)
 
-	send(w, problem)
+	Send(w, problem)
 }
 
-func send(w http.ResponseWriter, content interface{}) {
-	w.Header().Set(HeaderContentType, ContentTypeHTMLUTF8)
+func Send(w http.ResponseWriter, content interface{}) {
+	w.Header().Set(inandout.HeaderContentType, inandout.ContentTypeHTMLUTF8)
 	w.WriteHeader(http.StatusOK)
 
 	body := fmt.Sprint(content)

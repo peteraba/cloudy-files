@@ -21,5 +21,5 @@ type HealthResponse struct {
 }
 
 func (fh *FallbackHandler) Home(w http.ResponseWriter) {
-	send(w, HealthResponse{Status: "ok"}, fh.logger)
+	Send(w, HealthResponse{Status: "ok"}, fh.logger)
 }

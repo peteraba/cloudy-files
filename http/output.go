@@ -3,7 +3,7 @@ package http
 import (
 	"net/http"
 
-	"github.com/peteraba/cloudy-files/util"
+	"github.com/peteraba/cloudy-files/http/inandout"
 )
 
 const (
@@ -21,7 +21,7 @@ var supportedTypes = []string{ContentTypePlain, ContentTypeJSON, ContentTypeHTML
 func IsJSONRequest(r *http.Request) bool {
 	accept := r.Header.Get(HeaderAccept)
 
-	contentType := util.NegotiateContentType(accept, supportedTypes)
+	contentType := inandout.NegotiateContentType(accept, supportedTypes)
 
 	return contentType == ContentTypeJSON
 }

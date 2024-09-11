@@ -76,5 +76,5 @@ func (fh *FileHandler) ListFiles(w http.ResponseWriter, r *http.Request) {
 		strings.Join(fileHTML, ""),
 	)
 
-	send(w, tmpl)
+	Send(w, tmpl)
 }

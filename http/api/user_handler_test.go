@@ -16,6 +16,7 @@ import (
 	"github.com/peteraba/cloudy-files/compose"
 	composeTest "github.com/peteraba/cloudy-files/compose/test"
 	"github.com/peteraba/cloudy-files/http/api"
+	"github.com/peteraba/cloudy-files/http/inandout"
 	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/store"
 	"github.com/peteraba/cloudy-files/util"
@@ -82,19 +83,19 @@ func TestUserHandler_Login(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", utilTest.MustReader(t, loginStub))
 		require.NoError(t, err)
 
-		req.Header.Set(api.HeaderContentType, api.ContentTypeJSON)
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(api.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Equal(t, api.ContentTypeJSONUTF8, actualContentType)
+		assert.Equal(t, inandout.ContentTypeJSONUTF8, actualContentType)
 		assert.Contains(t, actualBody, "access")
 	})
 
@@ -112,18 +113,18 @@ func TestUserHandler_Login(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", utilTest.MustReader(t, loginStub))
 		require.NoError(t, err)
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(api.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusNotFound, rr.Code)
-		assert.Equal(t, api.ContentTypeJSONUTF8, actualContentType)
+		assert.Equal(t, inandout.ContentTypeJSONUTF8, actualContentType)
 		assert.Contains(t, actualBody, "Not found")
 	})
 
@@ -137,19 +138,19 @@ func TestUserHandler_Login(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", strings.NewReader("invalid"))
 		require.NoError(t, err)
 
-		req.Header.Set(api.HeaderContentType, api.ContentTypeJSON)
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderContentType, inandout.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(api.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
-		assert.Equal(t, api.ContentTypeJSONUTF8, actualContentType)
+		assert.Equal(t, inandout.ContentTypeJSONUTF8, actualContentType)
 		assert.Contains(t, actualBody, "Bad request")
 	})
 }
@@ -176,18 +177,18 @@ func TestUserHandler_CreateUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users", utilTest.MustReader(t, userStub))
 		require.NoError(t, err)
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(api.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, userStub.Name)
 		assert.Contains(t, actualBody, userStub.Email)
 	})
@@ -204,17 +205,17 @@ func TestUserHandler_CreateUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(api.HeaderContentType)
+		actualContentType := responseRecorder.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusBadRequest, responseRecorder.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, "Bad request")
 	})
 
@@ -240,17 +241,17 @@ func TestUserHandler_CreateUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(api.HeaderContentType)
+		actualContentType := responseRecorder.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, responseRecorder.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, "Access denied")
 	})
 }
@@ -270,18 +271,18 @@ func TestUserHandler_ListUsers(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/users", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(api.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, defaultUsers["foo"].Name)
 		assert.Contains(t, actualBody, defaultUsers["bar"].Name)
 	})
@@ -299,18 +300,18 @@ func TestUserHandler_ListUsers(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/users", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(api.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, rr.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, "Access denied")
 	})
 }
@@ -339,18 +340,18 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, data))
 		require.NoError(t, err)
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(api.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, user.Name)
 		assert.Contains(t, actualBody, `"password":"$`)
 	})
@@ -370,17 +371,17 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(api.HeaderContentType)
+		actualContentType := responseRecorder.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusBadRequest, responseRecorder.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, "Bad request")
 	})
 
@@ -408,17 +409,17 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(api.HeaderContentType)
+		actualContentType := responseRecorder.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, responseRecorder.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, "Access denied")
 	})
 }
@@ -447,18 +448,18 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, data))
 		require.NoError(t, err)
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(api.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, user.Name)
 		assert.Contains(t, actualBody, `"access":["baz"]`)
 	})
@@ -478,17 +479,17 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(api.HeaderContentType)
+		actualContentType := responseRecorder.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusBadRequest, responseRecorder.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, "Bad request")
 	})
 
@@ -515,17 +516,17 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(api.HeaderContentType)
+		actualContentType := responseRecorder.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, responseRecorder.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, "Access denied")
 	})
 }
@@ -554,18 +555,18 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, userStub))
 		require.NoError(t, err)
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(api.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, user.Name)
 		assert.Contains(t, actualBody, `"is_admin":true`)
 	})
@@ -593,17 +594,17 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(api.HeaderContentType)
+		actualContentType := responseRecorder.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, responseRecorder.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, "Access denied")
 	})
 }
@@ -632,18 +633,18 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, userStub))
 		require.NoError(t, err)
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(api.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, user.Name)
 		assert.Contains(t, actualBody, `"is_admin":false`)
 	})
@@ -671,17 +672,17 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(api.HeaderContentType)
+		actualContentType := responseRecorder.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, responseRecorder.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, "Access denied")
 	})
 }
@@ -700,7 +701,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodDelete, "/users/foo", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		rr := httptest.NewRecorder()
@@ -727,17 +728,17 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 
 		responseRecorder := httptest.NewRecorder()
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		handler.ServeHTTP(responseRecorder, req)
 
 		actualBody := responseRecorder.Body.String()
-		actualContentType := responseRecorder.Header().Get(api.HeaderContentType)
+		actualContentType := responseRecorder.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusForbidden, responseRecorder.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.Contains(t, actualBody, "Access denied")
 	})
 }

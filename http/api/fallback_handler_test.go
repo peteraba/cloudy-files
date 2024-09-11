@@ -11,7 +11,7 @@ import (
 
 	"github.com/peteraba/cloudy-files/appconfig"
 	composeTest "github.com/peteraba/cloudy-files/compose/test"
-	"github.com/peteraba/cloudy-files/http/api"
+	"github.com/peteraba/cloudy-files/http/inandout"
 )
 
 func setupFallbackHandler(t *testing.T) http.Handler {
@@ -40,18 +40,18 @@ func TestFallbackHandler_Home(t *testing.T) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
 		require.NoError(t, err)
 
-		req.Header.Set(api.HeaderAccept, api.ContentTypeJSON)
+		req.Header.Set(inandout.HeaderAccept, inandout.ContentTypeJSON)
 
 		// execute
 		rr := httptest.NewRecorder()
 		handler.ServeHTTP(rr, req)
 
 		actualBody := rr.Body.String()
-		actualContentType := rr.Header().Get(api.HeaderContentType)
+		actualContentType := rr.Header().Get(inandout.HeaderContentType)
 
 		// assert
 		assert.Equal(t, http.StatusOK, rr.Code)
-		assert.Contains(t, actualContentType, api.ContentTypeJSON)
+		assert.Contains(t, actualContentType, inandout.ContentTypeJSON)
 		assert.JSONEq(t, `{"status":"ok"}`, actualBody)
 	})
 }
