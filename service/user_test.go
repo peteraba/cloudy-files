@@ -26,21 +26,16 @@ func TestUser_Create_and_Login(t *testing.T) {
 	unusedSpy := util.NewSpy() // DO NOT USE !!!
 	ctx := context.Background()
 
-	setup := func(t *testing.T, userStoreSpy, sessionStoreSpy *util.Spy, userData repo.UserModelMap, sessionData repo.SessionModelMap) *service.User {
+	setup := func(t *testing.T, userStoreSpy *util.Spy, userData repo.UserModelMap) *service.User {
 		t.Helper()
 
 		userStore := store.NewInMemory(userStoreSpy)
 		err := userStore.Marshal(ctx, userData)
 		require.NoError(t, err)
 
-		sessionStore := store.NewInMemory(sessionStoreSpy)
-		err = sessionStore.Marshal(ctx, sessionData)
-		require.NoError(t, err)
-
 		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
 
 		factory.SetStore(userStore, compose.UserStore)
-		factory.SetStore(sessionStore, compose.SessionStore)
 
 		return factory.CreateUserService()
 	}
@@ -55,7 +50,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
 
 		// setup
-		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
+		sut := setup(t, unusedSpy, nil)
 
 		// execute
 		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
@@ -78,7 +73,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		// setup
 		userStoreSpy := (util.NewSpy()).Register("ReadForWrite", 0, assert.AnError)
 
-		sut := setup(t, userStoreSpy, unusedSpy, nil, nil)
+		sut := setup(t, userStoreSpy, nil)
 
 		// execute
 		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
@@ -99,7 +94,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
 
 		// setup
-		sut := setup(t, unusedSpy, unusedSpy, repo.UserModelMap{}, repo.SessionModelMap{})
+		sut := setup(t, unusedSpy, repo.UserModelMap{})
 
 		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
@@ -127,7 +122,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		stubPassword := ""
 
 		// setup
-		sut := setup(t, unusedSpy, unusedSpy, nil, nil)
+		sut := setup(t, unusedSpy, nil)
 
 		// execute
 		hash, err := sut.Login(ctx, stubName, stubPassword)
@@ -148,7 +143,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
 
 		// setup
-		sut := setup(t, unusedSpy, unusedSpy, repo.UserModelMap{}, repo.SessionModelMap{})
+		sut := setup(t, unusedSpy, repo.UserModelMap{})
 
 		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
 		require.NoError(t, err)
@@ -175,7 +170,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
 
 		// setup
-		sut := setup(t, unusedSpy, unusedSpy, repo.UserModelMap{}, repo.SessionModelMap{})
+		sut := setup(t, unusedSpy, repo.UserModelMap{})
 
 		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, true, []string{})
 		require.NoError(t, err)
@@ -200,7 +195,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
 
 		// setup
-		sut := setup(t, unusedSpy, unusedSpy, repo.UserModelMap{}, repo.SessionModelMap{})
+		sut := setup(t, unusedSpy, repo.UserModelMap{})
 		passwordHash, err := sut.HashPassword(ctx, stubPassword)
 		require.NoError(t, err)
 
@@ -225,7 +220,7 @@ func TestUser_Create_and_Login(t *testing.T) {
 		}
 
 		// setup
-		sut := setup(t, unusedSpy, unusedSpy, userData, repo.SessionModelMap{})
+		sut := setup(t, unusedSpy, userData)
 
 		// execute
 		newUser, err := sut.Create(ctx, user.Name, user.Email, user.Password, user.IsAdmin, user.Access)
@@ -234,33 +229,6 @@ func TestUser_Create_and_Login(t *testing.T) {
 		// assert
 		assert.Empty(t, newUser)
 		assert.ErrorContains(t, err, "user already exists")
-	})
-
-	t.Run("fail if session can't be started", func(t *testing.T) {
-		t.Parallel()
-
-		// data
-		stubName := gofakeit.Name()
-		stubEmail := gofakeit.Email()
-		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
-		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
-
-		// setup
-		sessionStoreSpy := util.NewSpy()
-		sessionStoreSpy.Register("ReadForWrite", 0, assert.AnError)
-		sut := setup(t, unusedSpy, sessionStoreSpy, repo.UserModelMap{}, repo.SessionModelMap{})
-
-		userModel, err := sut.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
-		require.NoError(t, err)
-		require.NotEmpty(t, userModel)
-
-		// execute
-		sessionHash, err := sut.Login(ctx, stubName, stubPassword)
-		require.Error(t, err)
-		require.Empty(t, sessionHash)
-
-		// assert
-		assert.ErrorIs(t, err, assert.AnError)
 	})
 }
 

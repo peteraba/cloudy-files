@@ -1,16 +1,14 @@
 package util
 
-// Intersection returns the intersection of two slices.
-func Intersection(sliceOne, sliceTwo []string) []string {
-	intersection := make([]string, 0)
-
+// HasIntersection checks if two slices have any common elements.
+func HasIntersection(sliceOne, sliceTwo []string) bool {
 	for _, v := range sliceOne {
 		for _, w := range sliceTwo {
 			if v == w {
-				intersection = append(intersection, v)
+				return true
 			}
 		}
 	}
 
-	return intersection
+	return false
 }

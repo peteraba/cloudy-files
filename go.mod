@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.61.0
 	github.com/brianvoe/gofakeit/v7 v7.0.4
 	github.com/caarlos0/env/v11 v11.2.2
+	github.com/gorilla/securecookie v1.1.2
 	github.com/joho/godotenv v1.5.1
 	github.com/monoculum/formam/v3 v3.6.0
 	github.com/phuslu/log v1.0.110

@@ -16,17 +16,27 @@ import (
 	"github.com/peteraba/cloudy-files/util"
 )
 
-func setupUserStore(t *testing.T) (*repo.User, *store.InMemory) {
-	t.Helper()
+func TestUserModel_ToSession(t *testing.T) {
+	t.Parallel()
 
-	factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
 
-	usersStoreStub := store.NewInMemory(util.NewSpy())
-	factory.SetStore(usersStoreStub, compose.UserStore)
+		// data
+		userModel := repo.UserModel{
+			Name:    "user1",
+			IsAdmin: true,
+			Access:  []string{"user1", "user2"},
+		}
 
-	sut := factory.CreateUserRepo(usersStoreStub)
+		// execute
+		sessionUser := userModel.ToSession()
 
-	return sut, usersStoreStub
+		// assert
+		assert.Equal(t, userModel.Name, sessionUser.Name)
+		assert.Equal(t, userModel.IsAdmin, sessionUser.IsAdmin)
+		assert.Equal(t, userModel.Access, sessionUser.Access)
+	})
 }
 
 func TestUserModelMap_Slice(t *testing.T) {
@@ -48,6 +58,19 @@ func TestUserModelMap_Slice(t *testing.T) {
 		assert.Contains(t, users, userModelMap["user1"])
 		assert.Contains(t, users, userModelMap["user2"])
 	})
+}
+
+func setupUserStore(t *testing.T) (*repo.User, *store.InMemory) {
+	t.Helper()
+
+	factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+
+	usersStoreStub := store.NewInMemory(util.NewSpy())
+	factory.SetStore(usersStoreStub, compose.UserStore)
+
+	sut := factory.CreateUserRepo(usersStoreStub)
+
+	return sut, usersStoreStub
 }
 
 func TestUser_Create_Get(t *testing.T) {
@@ -80,6 +103,12 @@ func TestUser_Create_Get(t *testing.T) {
 		assert.Equal(t, nameStub, user.Name)
 		assert.Equal(t, accessStub, user.Access)
 	})
+}
+
+func TestUser_Create(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
 
 	t.Run("fail if ReadForWrite fails", func(t *testing.T) {
 		t.Parallel()
@@ -154,6 +183,39 @@ func TestUser_Create_Get(t *testing.T) {
 
 		// assert
 		assert.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("fail if entry already exists", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		nameStub := "user1"
+		emailStub := "user1@example.com"
+		passwordStub := "password"
+		isAdminStub := true
+		accessStub := []string{"user1", "user2"}
+
+		// setup
+		sut, userStoreStub := setupUserStore(t)
+
+		err := userStoreStub.Marshal(ctx, repo.UserModelMap{
+			nameStub: {
+				Name:     nameStub,
+				Email:    emailStub,
+				Password: passwordStub,
+				IsAdmin:  isAdminStub,
+				Access:   accessStub,
+			},
+		})
+		require.NoError(t, err)
+
+		// execute
+		user, err := sut.Create(ctx, nameStub, emailStub, passwordStub, isAdminStub, accessStub)
+		require.Error(t, err)
+		require.Empty(t, user)
+
+		// assert
+		assert.ErrorContains(t, err, "user already exists")
 	})
 }
 
@@ -406,6 +468,25 @@ func TestUser_UpdateAccess(t *testing.T) {
 		// assert
 		assert.ErrorIs(t, err, assert.AnError)
 	})
+
+	t.Run("fail if user does not exist", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		nameStub := "foo"
+		accessStub := []string{"user1", "user2"}
+
+		// setup
+		sut, _ := setupUserStore(t)
+
+		// execute
+		user, err := sut.UpdateAccess(ctx, nameStub, accessStub)
+		require.Error(t, err)
+		require.Empty(t, user)
+
+		// assert
+		assert.ErrorIs(t, err, apperr.ErrNotFound)
+	})
 }
 
 func TestUser_UpdatePassword(t *testing.T) {
@@ -496,6 +577,25 @@ func TestUser_UpdatePassword(t *testing.T) {
 		// assert
 		assert.ErrorIs(t, err, assert.AnError)
 	})
+
+	t.Run("fail if user does not exist", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		nameStub := "foo"
+		passwordStub := "password"
+
+		// setup
+		sut, _ := setupUserStore(t)
+
+		// execute
+		user, err := sut.UpdatePassword(ctx, nameStub, passwordStub)
+		require.Error(t, err)
+		require.Empty(t, user)
+
+		// assert
+		assert.ErrorIs(t, err, apperr.ErrNotFound)
+	})
 }
 
 func TestUser_Promote(t *testing.T) {
@@ -582,6 +682,49 @@ func TestUser_Promote(t *testing.T) {
 
 		// assert
 		assert.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("fail if user does not exist", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		nameStub := "foo"
+
+		// setup
+		sut, _ := setupUserStore(t)
+
+		// execute
+		user, err := sut.Promote(ctx, nameStub)
+		require.Error(t, err)
+		require.Empty(t, user)
+
+		// assert
+		assert.ErrorIs(t, err, apperr.ErrNotFound)
+	})
+
+	t.Run("fail if user is already an admin", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		nameStub := "foo"
+
+		data := repo.UserModelMap{
+			nameStub: {Name: nameStub, IsAdmin: true},
+		}
+
+		// setup
+		sut, userStoreStub := setupUserStore(t)
+
+		err := userStoreStub.Marshal(ctx, data)
+		require.NoError(t, err)
+
+		// execute
+		user, err := sut.Promote(ctx, nameStub)
+		require.Error(t, err)
+
+		// assert
+		assert.Empty(t, user)
+		assert.ErrorContains(t, err, "bad request")
 	})
 }
 
@@ -670,95 +813,48 @@ func TestUser_Demote(t *testing.T) {
 		// assert
 		assert.ErrorIs(t, err, assert.AnError)
 	})
-}
 
-func TestUser_AddCSRF(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-
-	t.Run("success", func(t *testing.T) {
+	t.Run("fail if user does not exist", func(t *testing.T) {
 		t.Parallel()
 
 		// data
 		nameStub := "foo"
-		tokenStub := "token"
-
-		data := repo.UserModelMap{
-			nameStub: {Name: nameStub},
-		}
 
 		// setup
-		sut, userStoreStub := setupUserStore(t)
-
-		err := userStoreStub.Marshal(ctx, data)
-		require.NoError(t, err)
+		sut, _ := setupUserStore(t)
 
 		// execute
-		user, err := sut.AddCSRF(ctx, nameStub, tokenStub)
-		require.NoError(t, err)
-
-		// assert
-		assert.NotEmpty(t, user.CSRFList)
-		assert.Equal(t, tokenStub, user.CSRFList[0].Token)
-	})
-
-	t.Run("fail if ReadForWrite fails", func(t *testing.T) {
-		t.Parallel()
-
-		// data
-		nameStub := "foo"
-		tokenStub := "token"
-
-		data := repo.UserModelMap{
-			nameStub: {Name: nameStub},
-		}
-
-		// setup
-		sut, userStoreStub := setupUserStore(t)
-
-		err := userStoreStub.Marshal(ctx, data)
-		require.NoError(t, err)
-
-		spy := userStoreStub.GetSpy()
-		spy.Register("ReadForWrite", 0, assert.AnError)
-
-		// execute
-		user, err := sut.AddCSRF(ctx, nameStub, tokenStub)
+		user, err := sut.Demote(ctx, nameStub)
 		require.Error(t, err)
 		require.Empty(t, user)
 
 		// assert
-		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorIs(t, err, apperr.ErrNotFound)
 	})
 
-	t.Run("fail if WriteLocked fails", func(t *testing.T) {
+	t.Run("fail if user is already a normal user", func(t *testing.T) {
 		t.Parallel()
 
 		// data
 		nameStub := "foo"
-		tokenStub := "token"
 
 		data := repo.UserModelMap{
-			nameStub: {Name: nameStub},
+			nameStub: {Name: nameStub, IsAdmin: false},
 		}
 
 		// setup
 		sut, userStoreStub := setupUserStore(t)
 
-		spy := userStoreStub.GetSpy()
-		spy.Register("WriteLocked", 0, assert.AnError, util.Any)
-
 		err := userStoreStub.Marshal(ctx, data)
 		require.NoError(t, err)
 
 		// execute
-		user, err := sut.AddCSRF(ctx, nameStub, tokenStub)
+		user, err := sut.Demote(ctx, nameStub)
 		require.Error(t, err)
-		require.Empty(t, user)
 
 		// assert
-		assert.ErrorIs(t, err, assert.AnError)
+		assert.Empty(t, user)
+		assert.ErrorContains(t, err, "bad request")
 	})
 }
 

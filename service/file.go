@@ -65,7 +65,7 @@ func (f *File) Retrieve(ctx context.Context, name string, access []string) ([]by
 		return nil, fmt.Errorf("error retrieving model: %w", err)
 	}
 
-	if len(util.Intersection(file.Access, access)) == 0 {
+	if !util.HasIntersection(file.Access, access) {
 		return nil, fmt.Errorf("access denied: %w", apperr.ErrAccessDenied)
 	}
 
@@ -91,7 +91,7 @@ func (f *File) List(ctx context.Context, access []string, isAdmin bool) (repo.Fi
 	var accessibleFiles []repo.FileModel
 
 	for _, file := range fileModels {
-		if len(util.Intersection(file.Access, access)) > 0 {
+		if util.HasIntersection(file.Access, access) {
 			accessibleFiles = append(accessibleFiles, file)
 		}
 	}

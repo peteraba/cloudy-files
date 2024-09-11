@@ -12,16 +12,14 @@ import (
 )
 
 type UserHandler struct {
-	sessionService *service.Session
-	userService    *service.User
-	logger         *log.Logger
+	userService *service.User
+	logger      *log.Logger
 }
 
-func NewUserHandler(sessionService *service.Session, userService *service.User, logger *log.Logger) *UserHandler {
+func NewUserHandler(userService *service.User, logger *log.Logger) *UserHandler {
 	return &UserHandler{
-		sessionService: sessionService,
-		userService:    userService,
-		logger:         logger,
+		userService: userService,
+		logger:      logger,
 	}
 }
 
@@ -50,13 +48,13 @@ func (uh *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	uh.logger.Info().
 		Str("username", loginRequest.Username).
-		Str("hash", session.Hash).
 		Msg("Login successful.")
 
 	send(w, session, uh.logger)
 }
 
 func (uh *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	// TODO: Auth admin-only
 	users, err := uh.userService.List(r.Context())
 	if err != nil {
 		Problem(w, err, uh.logger)
@@ -68,6 +66,7 @@ func (uh *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	// TODO: Auth admin-only
 	userModel, err := Parse(r, repo.UserModel{})
 	if err != nil {
 		Problem(w, fmt.Errorf("failed to Parse user, err: %w", apperr.ErrBadRequest(err)), uh.logger)
@@ -96,6 +95,7 @@ type PasswordChangeRequest struct {
 
 // UpdateUserPassword updates a user's password.
 func (uh *UserHandler) UpdateUserPassword(w http.ResponseWriter, r *http.Request) {
+	// TODO: Auth admin-only or self-service
 	req, err := Parse(r, PasswordChangeRequest{})
 	if err != nil {
 		Problem(w, err, uh.logger)
@@ -122,6 +122,7 @@ type AccessChangeRequest struct {
 
 // UpdateUserAccess updates a user's access.
 func (uh *UserHandler) UpdateUserAccess(w http.ResponseWriter, r *http.Request) {
+	// TODO: Auth admin-only
 	req, err := Parse(r, AccessChangeRequest{})
 	if err != nil {
 		Problem(w, err, uh.logger)
@@ -147,6 +148,7 @@ type UserNameOnlyRequest struct {
 
 // PromoteUser promotes a user to admin.
 func (uh *UserHandler) PromoteUser(w http.ResponseWriter, r *http.Request) {
+	// TODO: Auth admin-only
 	ctx := r.Context()
 	name := r.PathValue("id")
 
@@ -162,6 +164,7 @@ func (uh *UserHandler) PromoteUser(w http.ResponseWriter, r *http.Request) {
 
 // DemoteUser demotes a user from admin.
 func (uh *UserHandler) DemoteUser(w http.ResponseWriter, r *http.Request) {
+	// TODO: Auth admin-only
 	ctx := r.Context()
 	name := r.PathValue("id")
 
@@ -177,6 +180,7 @@ func (uh *UserHandler) DemoteUser(w http.ResponseWriter, r *http.Request) {
 
 // DeleteUser deletes a user.
 func (uh *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	// TODO: Auth admin-only
 	ctx := r.Context()
 	name := r.PathValue("id")
 

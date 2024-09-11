@@ -138,12 +138,9 @@ func (f *File) readForWrite(ctx context.Context) error {
 // writeAfterRead writes the current session data to the store.
 // Note: This function assumes that the store is locked.
 func (f *File) writeAfterRead(ctx context.Context) error {
-	data, err := f.getData()
-	if err != nil {
-		return fmt.Errorf("error creating raw data: %w", err)
-	}
+	data, _ := json.Marshal(f.entries) //nolint:errchkjson // We are sure that the data can be marshaled correctly
 
-	err = f.store.WriteLocked(ctx, data)
+	err := f.store.WriteLocked(ctx, data)
 	if err != nil {
 		return fmt.Errorf("error storing data: %w", err)
 	}
@@ -168,14 +165,4 @@ func (f *File) createEntries(data []byte) error {
 	f.entries = entries
 
 	return nil
-}
-
-// getData returns the data to be stored in the store.
-func (f *File) getData() ([]byte, error) {
-	data, err := json.Marshal(f.entries)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling data: %w", err)
-	}
-
-	return data, nil
 }

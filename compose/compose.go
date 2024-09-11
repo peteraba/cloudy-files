@@ -1,12 +1,14 @@
 package compose
 
 import (
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/gorilla/securecookie"
 	"github.com/phuslu/log"
 
 	"github.com/peteraba/cloudy-files/appconfig"
@@ -25,40 +27,40 @@ import (
 type DataType int
 
 const (
-	// SessionStore represents a store for session data.
-	SessionStore DataType = iota
 	// UserStore represents a store for user data.
-	UserStore
+	UserStore DataType = iota
 	// FileStore represents a store for file data.
 	FileStore
 	// CSRFStore represents a store for CSRF data.
-	CSRFStore = 3
+	CSRFStore
 )
 
 // Factory is a factory for creating services.
 type Factory struct {
 	mutex                  *sync.RWMutex
 	fileSystemInstance     service.FileSystem
-	stores                 [4]repo.Store
+	stores                 [3]repo.Store
 	passwordHasherInstance service.PasswordHasher
 	s3Client               *s3.Client
 	appConfig              *appconfig.Config
 	display                cli.Display
+	cookieStore            *securecookie.SecureCookie
 	logger                 *log.Logger
 }
 
-var filePaths = [...]string{"sessions.json", "users.json", "files.json", "csrf.json"} //nolint:gochecknoglobals // This is a constant
+var filePaths = [...]string{"users.json", "files.json", "csrf.json"} //nolint:gochecknoglobals // This is a constant
 
 // NewFactory creates a new factory.
 func NewFactory(appConfig *appconfig.Config) *Factory {
 	return &Factory{
 		mutex:                  &sync.RWMutex{},
 		fileSystemInstance:     nil,
-		stores:                 [...]repo.Store{nil, nil, nil, nil},
+		stores:                 [...]repo.Store{nil, nil, nil},
 		passwordHasherInstance: nil,
 		s3Client:               nil,
 		appConfig:              appConfig,
 		display:                nil,
+		cookieStore:            nil,
 		logger:                 &log.DefaultLogger,
 	}
 }
@@ -88,7 +90,6 @@ func (f *Factory) SetAWS(awsConfig aws.Config) *Factory { //nolint:gocritic // a
 // CreateCliApp creates a CLI app.
 func (f *Factory) CreateCliApp() *cli.App {
 	return cli.NewApp(
-		f.CreateSessionService(),
 		f.CreateUserService(),
 		f.CreateFileService(),
 		f.GetDisplay(),
@@ -132,7 +133,6 @@ func (f *Factory) CreateFallbackHandler() *http.FallbackHandler {
 
 func (f *Factory) CreateAPIUserHandler() *api.UserHandler {
 	return api.NewUserHandler(
-		f.CreateSessionService(),
 		f.CreateUserService(),
 		f.logger,
 	)
@@ -140,7 +140,6 @@ func (f *Factory) CreateAPIUserHandler() *api.UserHandler {
 
 func (f *Factory) CreateAPIFileHandler() *api.FileHandler {
 	return api.NewFileHandler(
-		f.CreateSessionService(),
 		f.CreateFileService(),
 		f.logger,
 	)
@@ -156,17 +155,17 @@ func (f *Factory) CreateWebUserHandler() *web.UserHandler {
 	csrfRepo := f.GetStore(CSRFStore)
 
 	return web.NewUserHandler(
-		f.CreateSessionService(),
 		f.CreateUserService(),
 		f.CreateCSRFRepo(csrfRepo),
+		f.CreateCookieService(),
 		f.logger,
 	)
 }
 
 func (f *Factory) CreateWebFileHandler() *web.FileHandler {
 	return web.NewFileHandler(
-		f.CreateSessionService(),
 		f.CreateFileService(),
+		f.CreateCookieService(),
 		f.logger,
 	)
 }
@@ -202,20 +201,15 @@ func (f *Factory) CreateFileService() *service.File {
 func (f *Factory) CreateUserService() *service.User {
 	userStore := f.GetStore(UserStore)
 	userRepo := f.CreateUserRepo(userStore)
-	sessionStore := f.GetStore(SessionStore)
-	sessionRepo := f.CreateSessionRepo(sessionStore)
 	hasher := f.getHasher()
 	rawChecker := f.createRawPasswordChecker()
 
-	return service.NewUser(userRepo, sessionRepo, hasher, rawChecker, *f.logger)
+	return service.NewUser(userRepo, hasher, rawChecker, *f.logger)
 }
 
-// CreateSessionService creates a session service.
-func (f *Factory) CreateSessionService() *service.Session {
-	sessionStore := f.GetStore(SessionStore)
-	sessionRepo := f.CreateSessionRepo(sessionStore)
-
-	return service.NewSession(sessionRepo, *f.logger)
+// CreateCookieService creates a cookie service.
+func (f *Factory) CreateCookieService() *service.Cookie {
+	return service.NewCookie(f.getCookieStore(), *f.logger)
 }
 
 func (f *Factory) getFileSystem() service.FileSystem {
@@ -250,14 +244,37 @@ func (f *Factory) SetFileSystem(fs service.FileSystem) {
 }
 
 func (f *Factory) GetStore(dataType DataType) repo.Store {
-	f.mutex.RLock()
-	defer f.mutex.RUnlock()
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 
 	if f.stores[dataType] == nil {
 		f.stores[dataType] = f.createStore(dataType)
 	}
 
 	return f.stores[dataType]
+}
+
+func (f *Factory) getCookieStore() *securecookie.SecureCookie {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	if f.cookieStore != nil {
+		return f.cookieStore
+	}
+
+	hashKey, err := hex.DecodeString(f.appConfig.CookieHashKey)
+	if err != nil {
+		panic(err)
+	}
+
+	blockKey, err := hex.DecodeString(f.appConfig.CookieBlockKey)
+	if err != nil {
+		panic(err)
+	}
+
+	f.cookieStore = securecookie.New(hashKey, blockKey)
+
+	return f.cookieStore
 }
 
 func (f *Factory) createStore(dataType DataType) repo.Store {
@@ -294,13 +311,9 @@ func (f *Factory) CreateUserRepo(userStore repo.Store) *repo.User {
 	return repo.NewUser(userStore)
 }
 
-func (f *Factory) CreateSessionRepo(sessionStore repo.Store) *repo.Session {
-	return repo.NewSession(sessionStore)
-}
-
 func (f *Factory) getHasher() service.PasswordHasher {
-	f.mutex.RLock()
-	defer f.mutex.RUnlock()
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 
 	if f.passwordHasherInstance == nil {
 		f.passwordHasherInstance = password.NewBcryptHasher()
@@ -323,16 +336,16 @@ func (f *Factory) createRawPasswordChecker() *password.Checker {
 
 // GetLogger returns the logger.
 func (f *Factory) GetLogger() *log.Logger {
-	f.mutex.RLock()
-	defer f.mutex.RUnlock()
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 
 	return f.logger
 }
 
 // GetDisplay returns the display.
 func (f *Factory) GetDisplay() cli.Display {
-	f.mutex.RLock()
-	defer f.mutex.RUnlock()
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
 
 	if f.display == nil {
 		f.display = cli.NewStdout()

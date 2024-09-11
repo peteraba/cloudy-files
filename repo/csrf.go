@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/peteraba/cloudy-files/apperr"
 )
 
 // csrfTime represents the time a CSRF token is valid.
@@ -23,17 +25,6 @@ type CSRFModels []CSRFModel
 // CSRFModelMap represents a CSRF model map.
 type CSRFModelMap map[string]CSRFModels
 
-// Slice returns the file models as a slice.
-func (c CSRFModelMap) Slice() CSRFModels {
-	csrfModels := CSRFModels{}
-
-	for _, ipAddressCSRFModels := range c {
-		csrfModels = append(csrfModels, ipAddressCSRFModels...)
-	}
-
-	return csrfModels
-}
-
 // CSRF represents a CSRF repository.
 type CSRF struct {
 	store   Store
@@ -48,16 +39,6 @@ func NewCSRF(store Store) *CSRF {
 		lock:    &sync.Mutex{},
 		entries: make(CSRFModelMap),
 	}
-}
-
-// getData returns the data to be stored in the store.
-func (c *CSRF) getData() ([]byte, error) {
-	data, err := json.Marshal(c.entries)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling data: %w", err)
-	}
-
-	return data, nil
 }
 
 // Create creates a new user.
@@ -88,12 +69,13 @@ func (c *CSRF) Create(ctx context.Context, ipAddress, token string) error {
 	return nil
 }
 
-// Exists checks if a CSRF token exists.
-func (c *CSRF) Exists(ctx context.Context, ipAddress, token string) (bool, error) {
-	err := c.read(ctx)
+// Use checks if the CSRF token is valid and drops it so that it can not be reused.
+func (c *CSRF) Use(ctx context.Context, ipAddress, token string) error {
+	err := c.readForWrite(ctx)
 	if err != nil {
-		return false, err
+		return fmt.Errorf("error reading file: %w", err)
 	}
+	defer c.store.Unlock(ctx)
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -102,16 +84,23 @@ func (c *CSRF) Exists(ctx context.Context, ipAddress, token string) (bool, error
 
 	ipAddressCsrf, ok := c.entries[ipAddress]
 	if !ok {
-		return false, nil
+		return fmt.Errorf("no CSRF token found for IP address '%s', err: %w", ipAddress, apperr.ErrAccessDenied)
 	}
 
 	for _, csrfModel := range ipAddressCsrf {
 		if csrfModel.Token == token && csrfModel.Expires > now {
-			return true, nil
+			delete(c.entries, ipAddress)
+
+			err = c.writeAfterRead(ctx)
+			if err != nil {
+				return fmt.Errorf("error writing file: %w", err)
+			}
+
+			return nil
 		}
 	}
 
-	return false, nil
+	return fmt.Errorf("no CSRF token found for IP address '%s', err: %w", ipAddress, apperr.ErrAccessDenied)
 }
 
 // readForWrite reads the session data from the store and creates entries.
@@ -134,29 +123,11 @@ func (c *CSRF) readForWrite(ctx context.Context) error {
 // writeAfterRead writes the current session data to the store.
 // Note: This function assumes that the store is locked.
 func (c *CSRF) writeAfterRead(ctx context.Context) error {
-	data, err := c.getData()
-	if err != nil {
-		return fmt.Errorf("error getting data: %w", err)
-	}
+	data, _ := json.Marshal(c.entries) //nolint:errchkjson // We are sure that the data can be marshaled correctly
 
-	err = c.store.WriteLocked(ctx, data)
+	err := c.store.WriteLocked(ctx, data)
 	if err != nil {
 		return fmt.Errorf("error storing data: %w", err)
-	}
-
-	return nil
-}
-
-// read reads the session data from the store and creates entries.
-func (c *CSRF) read(ctx context.Context) error {
-	data, err := c.store.Read(ctx)
-	if err != nil {
-		return fmt.Errorf("error reading file: %w", err)
-	}
-
-	err = c.createEntries(data)
-	if err != nil {
-		return fmt.Errorf("error creating entries: %w", err)
 	}
 
 	return nil

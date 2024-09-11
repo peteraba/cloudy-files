@@ -26,17 +26,19 @@ func NewFallbackHandler(csrfRepo *repo.CSRF, logger *log.Logger) *FallbackHandle
 
 const tokenLength = 32
 
+// Home handles the home page.
+// Does not expect a valid session.
 func (fh *FallbackHandler) Home(w http.ResponseWriter, r *http.Request) {
 	ipAddress := GetIPAddress(r)
 
-	token, err := util.RandomHex(tokenLength)
+	token, _ := util.RandomHex(tokenLength)
+
+	err := fh.csrfRepo.Create(r.Context(), ipAddress, token)
 	if err != nil {
 		Problem(w, fh.logger, err)
 
 		return
 	}
-
-	csrf := fh.csrfRepo.Create(r.Context(), ipAddress, token)
 
 	tmpl := fmt.Sprintf(
 		`<form>
@@ -50,8 +52,8 @@ func (fh *FallbackHandler) Home(w http.ResponseWriter, r *http.Request) {
   </fieldset>
 </form>
 `,
-		csrf,
+		token,
 	)
 
-	send(w, tmpl, fh.logger)
+	send(w, tmpl)
 }

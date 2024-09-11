@@ -2,209 +2,341 @@ package service_test
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
-	"time"
 
-	"github.com/brianvoe/gofakeit/v7"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/peteraba/cloudy-files/appconfig"
 	"github.com/peteraba/cloudy-files/apperr"
-	"github.com/peteraba/cloudy-files/compose"
 	composeTest "github.com/peteraba/cloudy-files/compose/test"
+	"github.com/peteraba/cloudy-files/http/web"
 	"github.com/peteraba/cloudy-files/repo"
 	"github.com/peteraba/cloudy-files/service"
-	"github.com/peteraba/cloudy-files/store"
-	"github.com/peteraba/cloudy-files/util"
 )
 
-func TestSession_Check(t *testing.T) {
+func TestCookie_FlashError(t *testing.T) {
 	t.Parallel()
-
-	unusedSpy := util.NewSpy()
-	ctx := context.Background()
-
-	setup := func(t *testing.T, sessionStoreSpy, userStoreSpy *util.Spy) (*service.Session, *service.User) {
-		t.Helper()
-
-		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
-
-		factory.SetStore(store.NewInMemory(sessionStoreSpy), compose.SessionStore)
-		factory.SetStore(store.NewInMemory(userStoreSpy), compose.UserStore)
-
-		return factory.CreateSessionService(), factory.CreateUserService()
-	}
-
-	t.Run("fails when store returns error", func(t *testing.T) {
-		t.Parallel()
-
-		// data
-		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
-		stubHash := gofakeit.UUID()
-
-		// setup
-		sessionStoreSpy := util.NewSpy()
-		sessionStoreSpy.Register("Read", 0, assert.AnError)
-
-		sut, _ := setup(t, sessionStoreSpy, unusedSpy)
-
-		// execute
-		err := sut.Check(ctx, stubPassword, stubHash)
-		require.Error(t, err)
-
-		// assert
-		assert.ErrorIs(t, err, assert.AnError)
-	})
-
-	t.Run("fail when session is checked without login", func(t *testing.T) {
-		t.Parallel()
-
-		// data
-		stubName := gofakeit.Name()
-		stubEmail := gofakeit.Email()
-		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
-		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
-		stubHash := gofakeit.UUID()
-
-		// setup
-		sut, userService := setup(t, unusedSpy, unusedSpy)
-
-		userModel, err := userService.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
-		require.NoError(t, err)
-		require.NotEmpty(t, userModel)
-
-		// execute
-		err = sut.Check(ctx, stubName, stubHash)
-		require.Error(t, err)
-
-		// assert
-		assert.ErrorIs(t, err, apperr.ErrNotFound)
-	})
-
-	t.Run("logged in user has valid session", func(t *testing.T) {
-		t.Parallel()
-
-		// data
-		stubName := gofakeit.Name()
-		stubEmail := gofakeit.Email()
-		stubPassword := gofakeit.Password(true, true, true, true, false, 16)
-		stubAccess := []string{gofakeit.Adverb(), gofakeit.Adverb()}
-
-		// setup
-		sut, userService := setup(t, unusedSpy, unusedSpy)
-
-		userModel, err := userService.Create(ctx, stubName, stubEmail, stubPassword, false, stubAccess)
-		require.NoError(t, err)
-		require.NotEmpty(t, userModel)
-
-		sessionModel, err := userService.Login(ctx, stubName, stubPassword)
-		require.NoError(t, err)
-		require.NotEmpty(t, sessionModel)
-
-		// execute
-		err = sut.Check(ctx, stubName, sessionModel.Hash)
-
-		// assert
-		require.NoError(t, err)
-	})
-}
-
-func TestSession_CleanUp(t *testing.T) {
-	t.Parallel()
-
-	unusedSpy := util.NewSpy()
-	ctx := context.Background()
-
-	setup := func(t *testing.T, sessionStoreSpy *util.Spy, sessionData repo.SessionModelMap) *service.Session {
-		t.Helper()
-
-		sessionStore := store.NewInMemory(sessionStoreSpy)
-		err := sessionStore.Marshal(ctx, sessionData)
-		require.NoError(t, err)
-
-		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
-
-		factory.SetStore(sessionStore, compose.SessionStore)
-
-		return factory.CreateSessionService()
-	}
 
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
-		// setup
-		sut := setup(t, unusedSpy, repo.SessionModelMap{"peter": {Hash: "foobar", Expires: 0}})
-
-		// execute
-		err := sut.CleanUp(ctx)
-
-		// assert
-		require.NoError(t, err)
-	})
-
-	t.Run("fails when store returns error", func(t *testing.T) {
-		t.Parallel()
-
 		// data
+		expected := service.FlashMessage{Level: service.LevelError, Message: "baz"}
 
 		// setup
-		sessionStoreSpy := util.NewSpy()
-		sessionStoreSpy.Register("ReadForWrite", 0, assert.AnError)
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		sut := factory.CreateCookieService()
 
-		sut := setup(t, sessionStoreSpy, nil)
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		recorder := httptest.NewRecorder()
 
 		// execute
-		err := sut.CleanUp(ctx)
-		require.Error(t, err)
+		sut.FlashError(recorder, req, "/", assert.AnError, "baz", 17)
+
+		// setup assert
+		actualLocation := recorder.Header().Get(web.HeaderLocation)
+
+		req.Header.Set("Cookie", recorder.Header().Get("Set-Cookie"))
+
+		flashMessages, err := sut.GetFlashMessages(recorder, req)
+		require.NoError(t, err)
 
 		// assert
-		assert.ErrorIs(t, err, assert.AnError)
+		assert.Equal(t, expected, flashMessages[0])
+		assert.Equal(t, http.StatusSeeOther, recorder.Code)
+		assert.Equal(t, "/", actualLocation)
 	})
 }
 
-func TestSession_Get(t *testing.T) {
+type baz int
+
+func (b baz) String() string {
+	return fmt.Sprintf("baz %d", b)
+}
+
+func TestCookie_FlashMessage(t *testing.T) {
 	t.Parallel()
 
-	unusedSpy := util.NewSpy()
-	ctx := context.Background()
-
-	setup := func(t *testing.T, sessionStoreSpy *util.Spy, sessionData repo.SessionModelMap) *service.Session {
-		t.Helper()
-
-		sessionStore := store.NewInMemory(sessionStoreSpy)
-		err := sessionStore.Marshal(ctx, sessionData)
-		require.NoError(t, err)
-
-		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
-
-		factory.SetStore(sessionStore, compose.SessionStore)
-
-		return factory.CreateSessionService()
-	}
-
-	t.Run("fails when the session is expired", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		// data
-		userName := gofakeit.Name()
-		sessionHash := gofakeit.UUID()
-		sessionData := repo.SessionModelMap{
-			userName: {
-				Hash:    sessionHash,
-				Expires: time.Now().Add(-time.Hour).Unix(),
-			},
+		expected := service.FlashMessage{Level: service.LevelInfo, Message: "baz"}
+
+		// setup
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		sut := factory.CreateCookieService()
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		recorder := httptest.NewRecorder()
+
+		// execute
+		sut.FlashMessage(recorder, req, "/", "baz", baz(17))
+
+		// setup assert
+		actualLocation := recorder.Header().Get(web.HeaderLocation)
+
+		req.Header.Set("Cookie", recorder.Header().Get("Set-Cookie"))
+
+		flashMessages, err := sut.GetFlashMessages(recorder, req)
+		require.NoError(t, err)
+
+		// assert
+		assert.Equal(t, expected, flashMessages[0])
+		assert.Equal(t, http.StatusSeeOther, recorder.Code)
+		assert.Equal(t, "/", actualLocation)
+	})
+}
+
+func TestCookie_Add_and_GetFlashMessages(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		expected := service.FlashMessage{Level: service.LevelInfo, Message: "baz"}
+
+		// setup
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		sut := factory.CreateCookieService()
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+
+		// execute
+		err = sut.AddFlashMessage(rr, req, expected)
+		require.NoError(t, err)
+
+		// setup assert
+		req.Header.Set("Cookie", rr.Header().Get("Set-Cookie"))
+
+		actual, err := sut.GetFlashMessages(rr, req)
+		require.NoError(t, err)
+
+		// assert
+		assert.Equal(t, expected, actual[0])
+	})
+}
+
+func TestCookie_GetFlashMessages(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success if cookie is empty", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		sut := factory.CreateCookieService()
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		req.Header.Set("Cookie", "flash=")
+
+		rr := httptest.NewRecorder()
+
+		// execute
+		actual, err := sut.GetFlashMessages(rr, req)
+		require.NoError(t, err)
+		require.Empty(t, actual)
+	})
+
+	t.Run("fail if message can not be decoded", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		sut := factory.CreateCookieService()
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		req.Header.Set("Cookie", "flash=bar")
+
+		rr := httptest.NewRecorder()
+
+		// execute
+		actual, err := sut.GetFlashMessages(rr, req)
+		require.Error(t, err)
+		require.Empty(t, actual)
+
+		// assert
+		assert.ErrorContains(t, err, "failed to decode flash message session")
+	})
+
+	t.Run("fail if no messages", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		sut := factory.CreateCookieService()
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		rr := httptest.NewRecorder()
+
+		// execute
+		actual, err := sut.GetFlashMessages(rr, req)
+		require.Error(t, err)
+		require.Empty(t, actual)
+
+		// assert
+		assert.ErrorContains(t, err, "named cookie not present")
+	})
+}
+
+func TestCookie_SessionUser(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success store, get", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		expected := repo.SessionUser{
+			Name:    "baz",
+			IsAdmin: true,
 		}
 
 		// setup
-		sut := setup(t, unusedSpy, sessionData)
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		sut := factory.CreateCookieService()
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		recorder := httptest.NewRecorder()
 
 		// execute
-		newSession, err := sut.Get(ctx, userName, sessionHash)
-		require.Error(t, err)
-		require.Empty(t, newSession)
+		sut.StoreSessionUser(recorder, expected)
+
+		req.Header.Set("Cookie", recorder.Header().Get("Set-Cookie"))
+
+		actual, err := sut.GetSessionUser(req)
+		require.NoError(t, err)
 
 		// assert
-		assert.ErrorIs(t, err, apperr.ErrNotFound)
+		assert.Equal(t, expected, actual)
+	})
+
+	t.Run("success store, get empty", func(t *testing.T) {
+		t.Parallel()
+
+		// data
+		expected := repo.SessionUser{
+			IsAdmin: true,
+		}
+
+		// setup
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		sut := factory.CreateCookieService()
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		recorder := httptest.NewRecorder()
+
+		// execute
+		sut.StoreSessionUser(recorder, expected)
+
+		req.Header.Set("Cookie", recorder.Header().Get("Set-Cookie"))
+
+		actual, err := sut.GetSessionUser(req)
+		require.Error(t, err)
+		require.Empty(t, actual)
+
+		// assert
+		assert.ErrorIs(t, err, apperr.ErrAccessDenied)
+	})
+}
+
+func TestCookie_GetSessionUser(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success get empty when not set", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		sut := factory.CreateCookieService()
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		// execute
+		sessionUser, err := sut.GetSessionUser(req)
+		require.Error(t, err)
+		require.Empty(t, sessionUser)
+
+		// assert
+		assert.ErrorIs(t, err, apperr.ErrAccessDenied)
+	})
+
+	t.Run("fail to get if session is missing", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		sut := factory.CreateCookieService()
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		// execute
+		sessionUser, err := sut.GetSessionUser(req)
+		require.Error(t, err)
+		require.Empty(t, sessionUser)
+
+		// assert
+		assert.ErrorIs(t, err, apperr.ErrAccessDenied)
+	})
+
+	t.Run("fail if message can not be decoded", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		sut := factory.CreateCookieService()
+
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		require.NoError(t, err)
+
+		req.Header.Set("Cookie", "user=bar")
+
+		// execute
+		actual, err := sut.GetSessionUser(req)
+		require.Error(t, err)
+		require.Empty(t, actual)
+
+		// assert
+		assert.ErrorContains(t, err, "failed to decode user session")
+	})
+}
+
+func TestCookie_DeleteSessionUser(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success delete when not set", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+		sut := factory.CreateCookieService()
+
+		rr := httptest.NewRecorder()
+
+		// execute
+		sut.DeleteSessionUser(rr)
 	})
 }

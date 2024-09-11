@@ -44,7 +44,7 @@ var defaultUserPasswords = map[string]string{
 	"bar": "bar1234$FooBar",
 }
 
-func setupUserHandler(t *testing.T, ctx context.Context) (http.Handler, *store.InMemory, *store.InMemory) { //nolint:unparam // sessionStore will be used soon
+func setupUserHandler(t *testing.T, ctx context.Context) (http.Handler, *store.InMemory) {
 	t.Helper()
 
 	factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
@@ -54,13 +54,10 @@ func setupUserHandler(t *testing.T, ctx context.Context) (http.Handler, *store.I
 	require.NoError(t, err)
 	factory.SetStore(userStore, compose.UserStore)
 
-	sessionStore := store.NewInMemory(util.NewSpy())
-	factory.SetStore(sessionStore, compose.SessionStore)
-
 	sut := factory.CreateUserHandler()
 	handler := http.Handler(sut.SetupRoutes(http.NewServeMux()))
 
-	return handler, userStore, sessionStore
+	return handler, userStore
 }
 
 func TestUserHandler_Login(t *testing.T) {
@@ -68,7 +65,7 @@ func TestUserHandler_Login(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("success json", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
@@ -79,7 +76,7 @@ func TestUserHandler_Login(t *testing.T) {
 			Password: passwordStub,
 		}
 
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", utilTest.MustReader(t, loginStub))
@@ -98,7 +95,6 @@ func TestUserHandler_Login(t *testing.T) {
 		// assert
 		assert.Equal(t, http.StatusOK, rr.Code)
 		assert.Equal(t, api.ContentTypeJSONUTF8, actualContentType)
-		assert.Contains(t, actualBody, "hash")
 		assert.Contains(t, actualBody, "access")
 	})
 
@@ -110,7 +106,7 @@ func TestUserHandler_Login(t *testing.T) {
 			Username: "baz",
 		}
 
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", utilTest.MustReader(t, loginStub))
@@ -135,7 +131,7 @@ func TestUserHandler_Login(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/user-logins", strings.NewReader("invalid"))
@@ -163,7 +159,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("success json", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
@@ -175,7 +171,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 			Access:   []string{"baz"},
 		}
 
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users", utilTest.MustReader(t, userStub))
 		require.NoError(t, err)
@@ -200,7 +196,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, "/users", strings.NewReader("invalid"))
@@ -234,7 +230,7 @@ func TestUserHandler_CreateUser(t *testing.T) {
 			Access:   []string{"baz"},
 		}
 
-		handler, userStoreStub, _ := setupUserHandler(t, ctx)
+		handler, userStoreStub := setupUserHandler(t, ctx)
 
 		userStoreStub.GetSpy().Register("ReadForWrite", 0, apperr.ErrAccessDenied)
 
@@ -264,11 +260,11 @@ func TestUserHandler_ListUsers(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("success json", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/users", nil)
@@ -294,7 +290,7 @@ func TestUserHandler_ListUsers(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		handler, userStoreStub, _ := setupUserHandler(t, ctx)
+		handler, userStoreStub := setupUserHandler(t, ctx)
 
 		userStoreSpy := userStoreStub.GetSpy()
 		userStoreSpy.Register("Read", 0, apperr.ErrAccessDenied)
@@ -324,7 +320,7 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("success json", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
@@ -337,7 +333,7 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 
 		safeURL := "/users/" + url.QueryEscape(user.Name) + "/passwords"
 
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, data))
@@ -366,7 +362,7 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 		user := defaultUsers["bar"]
 
 		safeURL := "/users/" + url.QueryEscape(user.Name) + "/passwords"
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, strings.NewReader("invalid"))
@@ -402,7 +398,7 @@ func TestUserHandler_UpdateUserPassword(t *testing.T) {
 
 		safeURL := "/users/" + url.QueryEscape(user.Name) + "/passwords"
 
-		handler, userStoreStub, _ := setupUserHandler(t, ctx)
+		handler, userStoreStub := setupUserHandler(t, ctx)
 
 		userStoreStub.GetSpy().Register("ReadForWrite", 0, apperr.ErrAccessDenied)
 
@@ -432,7 +428,7 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("success json", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
@@ -445,7 +441,7 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 
 		safeURL := "/users/" + url.QueryEscape(user.Name) + "/accesses"
 
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, data))
@@ -474,7 +470,7 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 		user := defaultUsers["bar"]
 
 		safeURL := "/users/" + url.QueryEscape(user.Name) + "/accesses"
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, strings.NewReader("invalid"))
@@ -509,7 +505,7 @@ func TestUserHandler_UpdateUserAccess(t *testing.T) {
 
 		safeURL := "/users/" + url.QueryEscape(user.Name) + "/accesses"
 
-		handler, userStoreStub, _ := setupUserHandler(t, ctx)
+		handler, userStoreStub := setupUserHandler(t, ctx)
 
 		userStoreStub.GetSpy().Register("ReadForWrite", 0, apperr.ErrAccessDenied)
 
@@ -539,7 +535,7 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("success json", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
@@ -552,7 +548,7 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 
 		safeURL := "/users/" + url.QueryEscape(user.Name) + "/promotions"
 
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, userStub))
@@ -587,7 +583,7 @@ func TestUserHandler_PromoteUser(t *testing.T) {
 
 		safeURL := "/users/" + url.QueryEscape(user.Name) + "/promotions"
 
-		handler, userStoreStub, _ := setupUserHandler(t, ctx)
+		handler, userStoreStub := setupUserHandler(t, ctx)
 
 		userStoreStub.GetSpy().Register("ReadForWrite", 0, apperr.ErrAccessDenied)
 
@@ -617,7 +613,7 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("success json", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
@@ -630,7 +626,7 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 
 		safeURL := "/users/" + url.QueryEscape(user.Name) + "/demotions"
 
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodPut, safeURL, utilTest.MustReader(t, userStub))
@@ -665,7 +661,7 @@ func TestUserHandler_DemoteUser(t *testing.T) {
 
 		safeURL := "/users/" + url.QueryEscape(user.Name) + "/demotions"
 
-		handler, userStoreStub, _ := setupUserHandler(t, ctx)
+		handler, userStoreStub := setupUserHandler(t, ctx)
 
 		userStoreStub.GetSpy().Register("ReadForWrite", 0, apperr.ErrAccessDenied)
 
@@ -695,11 +691,11 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("success json", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		handler, _, _ := setupUserHandler(t, ctx)
+		handler, _ := setupUserHandler(t, ctx)
 
 		req, err := http.NewRequestWithContext(ctx, http.MethodDelete, "/users/foo", nil)
 		require.NoError(t, err)
@@ -721,7 +717,7 @@ func TestUserHandler_DeleteUser(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		handler, userStoreStub, _ := setupUserHandler(t, ctx)
+		handler, userStoreStub := setupUserHandler(t, ctx)
 
 		userStoreStub.GetSpy().Register("ReadForWrite", 0, apperr.ErrAccessDenied)
 

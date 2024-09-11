@@ -2,10 +2,13 @@ package cli
 
 import (
 	"context"
+	"encoding/hex"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/gorilla/securecookie"
 	"github.com/phuslu/log"
 
 	"github.com/peteraba/cloudy-files/service"
@@ -14,25 +17,23 @@ import (
 
 // App represents the command line interface.
 type App struct {
-	sessionService *service.Session
-	userService    *service.User
-	fileService    *service.File
-	display        Display
-	logger         *log.Logger
-	help           string
+	userService *service.User
+	fileService *service.File
+	display     Display
+	logger      *log.Logger
+	help        string
 }
 
 const Help = "TODO..."
 
 // NewApp creates a new App instance.
-func NewApp(sessionService *service.Session, userService *service.User, fileService *service.File, display Display, logger *log.Logger) *App {
+func NewApp(userService *service.User, fileService *service.File, display Display, logger *log.Logger) *App {
 	return &App{
-		sessionService: sessionService,
-		userService:    userService,
-		fileService:    fileService,
-		display:        display,
-		logger:         logger,
-		help:           Help,
+		userService: userService,
+		fileService: fileService,
+		display:     display,
+		logger:      logger,
+		help:        Help,
 	}
 }
 
@@ -51,14 +52,12 @@ func (a *App) Route(ctx context.Context, subCommand string, args ...string) {
 		a.CheckPassword(ctx, args...)
 	case "checkPasswordHash":
 		a.CheckPasswordHash(ctx, args...)
-	case "checkSession":
-		a.CheckSession(ctx, args...)
-	case "cleanUp":
-		a.CleanUp(ctx)
 	case "upload":
 		a.Upload(ctx, args...)
 	case "size":
 		a.Size(ctx, args...)
+	case "cookieKey":
+		a.CookieKey(args...)
 	default:
 		a.display.ExitWithHelp("Unknown subcommand: "+subCommand, a.help)
 	}
@@ -96,7 +95,7 @@ func (a *App) Login(ctx context.Context, args ...string) {
 		a.display.Exit("Login failed.", err)
 	}
 
-	a.display.Println("Session started:", sessionModel.Hash)
+	a.display.Println("Session started:", sessionModel.Name)
 }
 
 // CheckPassword checks if a password matches the password hash stored for a user.
@@ -131,33 +130,6 @@ func (a *App) CheckPasswordHash(ctx context.Context, args ...string) {
 	}
 
 	a.display.Println("Password matches the hash received.")
-}
-
-// CheckSession checks if a session exists.
-func (a *App) CheckSession(ctx context.Context, args ...string) {
-	if len(args) < 2 {
-		a.display.ExitWithHelp("Please provide a name and a hashPassword to check.", a.help)
-	}
-
-	name := args[0]
-	hash := args[1]
-
-	err := a.sessionService.Check(ctx, name, hash)
-	if err != nil {
-		a.display.Exit("Session does not exist.", err)
-	}
-
-	a.display.Println("Session exists.")
-}
-
-// CleanUp cleans up all sessions.
-func (a *App) CleanUp(ctx context.Context) {
-	err := a.sessionService.CleanUp(ctx)
-	if err != nil {
-		a.display.Exit("Session cleanup failed.", err)
-	}
-
-	a.display.Println("Session data is cleaned up.")
 }
 
 // CreateUser creates a user.
@@ -242,4 +214,26 @@ func (a *App) Size(ctx context.Context, args ...string) {
 	fileSize := util.FileSizeFromSize(len(data))
 
 	a.display.Println("File size:", fileSize.String())
+}
+
+// CookieKey generates a new cookie key.
+func (a *App) CookieKey(args ...string) {
+	length := 32
+
+	if len(args) > 0 {
+		l, err := strconv.Atoi(args[0])
+		if err != nil {
+			a.display.Exit("Invalid length:", err)
+
+			return
+		}
+
+		if l > 0 {
+			length = l
+		}
+	}
+
+	key := securecookie.GenerateRandomKey(length)
+
+	a.display.Println("Key generated:", hex.EncodeToString(key))
 }

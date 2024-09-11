@@ -44,10 +44,10 @@ func Problem(w http.ResponseWriter, logger *log.Logger, err error) {
 	header.Set(HeaderContentTypeOptions, "nosniff")
 	w.WriteHeader(problem.Status)
 
-	send(w, problem, logger)
+	send(w, problem)
 }
 
-func send(w http.ResponseWriter, content interface{}, logger *log.Logger) {
+func send(w http.ResponseWriter, content interface{}) {
 	w.Header().Set(HeaderContentType, ContentTypeHTMLUTF8)
 	w.WriteHeader(http.StatusOK)
 
@@ -97,8 +97,5 @@ func send(w http.ResponseWriter, content interface{}, logger *log.Logger) {
 </html>
 `
 
-	_, err := fmt.Fprintf(w, tmpl, body)
-	if err != nil {
-		logger.Error().Err(err).Msg("Error during writing content.")
-	}
+	fmt.Fprintf(w, tmpl, body)
 }

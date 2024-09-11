@@ -19,13 +19,10 @@ import (
 	"github.com/peteraba/cloudy-files/util"
 )
 
-func setupFileHandler(t *testing.T) (http.Handler, *store.InMemory, *store.InMemory) { //nolint:unparam // sessionStore will be used soon
+func setupFileHandler(t *testing.T) (http.Handler, *store.InMemory) {
 	t.Helper()
 
 	factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
-
-	sessionStore := store.NewInMemory(util.NewSpy())
-	factory.SetStore(sessionStore, compose.SessionStore)
 
 	fileStore := store.NewInMemory(util.NewSpy())
 	factory.SetStore(fileStore, compose.FileStore)
@@ -33,7 +30,7 @@ func setupFileHandler(t *testing.T) (http.Handler, *store.InMemory, *store.InMem
 	sut := factory.CreateFileHandler()
 	handler := http.Handler(sut.SetupRoutes(http.NewServeMux()))
 
-	return handler, sessionStore, fileStore
+	return handler, fileStore
 }
 
 func TestFileHandler_ListFiles(t *testing.T) {
@@ -41,7 +38,7 @@ func TestFileHandler_ListFiles(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("success html", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
@@ -54,7 +51,7 @@ func TestFileHandler_ListFiles(t *testing.T) {
 			Access: accessStub,
 		}
 
-		handler, _, fileStoreStub := setupFileHandler(t)
+		handler, fileStoreStub := setupFileHandler(t)
 
 		err := fileStoreStub.Marshal(ctx, filesStub)
 		require.NoError(t, err)
@@ -64,6 +61,8 @@ func TestFileHandler_ListFiles(t *testing.T) {
 		require.NoError(t, err)
 
 		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+
+		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
 		// execute
 		rr := httptest.NewRecorder()
@@ -81,6 +80,60 @@ func TestFileHandler_ListFiles(t *testing.T) {
 		assert.Contains(t, actualBody, accessStub[1])
 	})
 
+	t.Run("fail if no user is logged in", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		handler, _ := setupFileHandler(t)
+
+		// setup request
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/files", nil)
+		require.NoError(t, err)
+
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+
+		// execute
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		actualBody := rr.Body.String()
+		actualContentType := rr.Header().Get(web.HeaderContentType)
+
+		// assert
+		assert.Equal(t, http.StatusForbidden, rr.Code)
+		assert.Contains(t, actualContentType, web.ContentTypeHTML)
+		assert.Contains(t, actualBody, "</html>")
+		assert.Contains(t, actualBody, "Access denied")
+	})
+
+	t.Run("fail if the logged in user is not an admin", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		handler, _ := setupFileHandler(t)
+
+		// setup request
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, "/files", nil)
+		require.NoError(t, err)
+
+		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+
+		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: false})
+
+		// execute
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+
+		actualBody := rr.Body.String()
+		actualContentType := rr.Header().Get(web.HeaderContentType)
+
+		// assert
+		assert.Equal(t, http.StatusForbidden, rr.Code)
+		assert.Contains(t, actualContentType, web.ContentTypeHTML)
+		assert.Contains(t, actualBody, "</html>")
+		assert.Contains(t, actualBody, "Access denied")
+	})
+
 	t.Run("fail if service fails to list files", func(t *testing.T) {
 		t.Parallel()
 
@@ -94,7 +147,7 @@ func TestFileHandler_ListFiles(t *testing.T) {
 			Access: accessStub,
 		}
 
-		handler, _, fileStoreStub := setupFileHandler(t)
+		handler, fileStoreStub := setupFileHandler(t)
 
 		fileStoreSpy := fileStoreStub.GetSpy()
 		fileStoreSpy.Register("Read", 0, apperr.ErrAccessDenied)
@@ -104,6 +157,8 @@ func TestFileHandler_ListFiles(t *testing.T) {
 		require.NoError(t, err)
 
 		req.Header.Set(web.HeaderAccept, web.ContentTypeHTML)
+
+		login(t, req, repo.SessionUser{Name: "foo", IsAdmin: true})
 
 		// execute
 		rr := httptest.NewRecorder()
@@ -128,7 +183,7 @@ func TestFileHandler_NotImplemented(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		handler, _, _ := setupFileHandler(t)
+		handler, _ := setupFileHandler(t)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodDelete, "/files/foo", nil)

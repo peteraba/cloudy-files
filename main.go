@@ -21,7 +21,8 @@ const (
 
 func main() {
 	ctx := context.Background()
-	factory := compose.NewFactory(appconfig.NewConfigFromFile())
+
+	factory := compose.NewFactory(appconfig.NewConfigFromFile().Validate())
 
 	setupAws(ctx, factory)
 

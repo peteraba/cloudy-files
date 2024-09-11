@@ -5,19 +5,33 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/peteraba/cloudy-files/apperr"
 )
 
+// SessionUser represents a user as stored in a session.
+type SessionUser struct {
+	Name    string   `json:"name"     formam:"name"`
+	IsAdmin bool     `json:"is_admin" formam:"is_admin"`
+	Access  []string `json:"access"   formam:"access"`
+}
+
 // UserModel represents a user model.
 type UserModel struct {
-	Name     string      `json:"name"     formam:"name"`
-	Email    string      `json:"email"    formam:"email"`
-	Password string      `json:"password" formam:"password"`
-	IsAdmin  bool        `json:"is_admin" formam:"is_admin"`
-	Access   []string    `json:"access"   formam:"access"`
-	CSRFList []CSRFModel `json:"-"        formam:"-"`
+	Name     string   `json:"name"     formam:"name"`
+	Email    string   `json:"email"    formam:"email"`
+	Password string   `json:"password" formam:"password"`
+	IsAdmin  bool     `json:"is_admin" formam:"is_admin"`
+	Access   []string `json:"access"   formam:"access"`
+}
+
+// ToSession converts a user model to a session model.
+func (u UserModel) ToSession() SessionUser { //nolint:gocritic // Models are not to be passed as a pointers
+	return SessionUser{
+		Name:    u.Name,
+		IsAdmin: u.IsAdmin,
+		Access:  u.Access,
+	}
 }
 
 // UserModels represents a user model list.
@@ -70,16 +84,6 @@ func (u *User) createEntries(data []byte) error {
 	u.entries = entries
 
 	return nil
-}
-
-// getData returns the data to be stored in the store.
-func (u *User) getData() ([]byte, error) {
-	data, err := json.Marshal(u.entries)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling data: %w", err)
-	}
-
-	return data, nil
 }
 
 // List lists all users.
@@ -135,7 +139,6 @@ func (u *User) Create(ctx context.Context, name, email, password string, isAdmin
 		Access:   access,
 		Password: password,
 		IsAdmin:  isAdmin,
-		CSRFList: nil,
 	}
 
 	err = u.writeAfterRead(ctx)
@@ -266,37 +269,6 @@ func (u *User) Demote(ctx context.Context, name string) (UserModel, error) {
 	return entry, nil
 }
 
-// AddCSRF adds a CSRF token to a user.
-func (u *User) AddCSRF(ctx context.Context, name, token string) (UserModel, error) {
-	err := u.readForWrite(ctx)
-	if err != nil {
-		return UserModel{}, fmt.Errorf("error reading for write: %w", err)
-	}
-	defer u.store.Unlock(ctx)
-
-	u.lock.Lock()
-	defer u.lock.Unlock()
-
-	entry, ok := u.entries[name]
-	if !ok {
-		return UserModel{}, fmt.Errorf("user not found: %s, err: %w", name, apperr.ErrNotFound)
-	}
-
-	entry.CSRFList = append(entry.CSRFList, CSRFModel{
-		Token:   token,
-		Expires: time.Now().Add(csrfTime).Unix(),
-	})
-
-	u.entries[name] = entry
-
-	err = u.writeAfterRead(ctx)
-	if err != nil {
-		return UserModel{}, fmt.Errorf("error writing after read: %w", err)
-	}
-
-	return entry, nil
-}
-
 // Delete deletes a user.
 func (u *User) Delete(ctx context.Context, name string) error {
 	err := u.readForWrite(ctx)
@@ -353,12 +325,9 @@ func (u *User) readForWrite(ctx context.Context) error {
 // writeAfterRead writes the current session data to the store.
 // Note: This function assumes that the store is locked.
 func (u *User) writeAfterRead(ctx context.Context) error {
-	data, err := u.getData()
-	if err != nil {
-		return fmt.Errorf("error getting data: %w", err)
-	}
+	data, _ := json.Marshal(u.entries) //nolint:errchkjson // We are sure that the data can be marshaled correctly
 
-	err = u.store.WriteLocked(ctx, data)
+	err := u.store.WriteLocked(ctx, data)
 	if err != nil {
 		return fmt.Errorf("error storing data: %w", err)
 	}

@@ -13,17 +13,15 @@ import (
 type User struct {
 	logger          log.Logger
 	repo            UserRepo
-	sessionRepo     SessionRepo
 	passwordHasher  PasswordHasher
 	passwordChecker PasswordChecker
 }
 
 // NewUser creates a new User service.
-func NewUser(userRepo UserRepo, sessionRepo SessionRepo, passwordHasher PasswordHasher, passwordChecker PasswordChecker, logger log.Logger) *User {
+func NewUser(userRepo UserRepo, passwordHasher PasswordHasher, passwordChecker PasswordChecker, logger log.Logger) *User {
 	return &User{
 		logger:          logger,
 		repo:            userRepo,
-		sessionRepo:     sessionRepo,
 		passwordHasher:  passwordHasher,
 		passwordChecker: passwordChecker,
 	}
@@ -47,10 +45,10 @@ func (u *User) Create(ctx context.Context, name, email, password string, isAdmin
 }
 
 // Login logs in a user with the given username and password and returns a session hash.
-func (u *User) Login(ctx context.Context, userName, password string) (repo.SessionModel, error) {
+func (u *User) Login(ctx context.Context, userName, password string) (repo.SessionUser, error) {
 	user, err := u.repo.Get(ctx, userName)
 	if err != nil {
-		return repo.SessionModel{}, fmt.Errorf("failed to retrieve user: %w", err)
+		return repo.SessionUser{}, fmt.Errorf("failed to retrieve user: %w", err)
 	}
 
 	// CheckPassword if the password matches
@@ -58,16 +56,10 @@ func (u *User) Login(ctx context.Context, userName, password string) (repo.Sessi
 	if err != nil {
 		u.logger.Info().Msg("Password retrieved: " + user.Password)
 
-		return repo.SessionModel{}, fmt.Errorf("password does not match: %w", err)
+		return repo.SessionUser{}, fmt.Errorf("password does not match: %w", err)
 	}
 
-	// Start a session
-	hash, err := u.sessionRepo.Start(ctx, userName, user.IsAdmin, user.Access)
-	if err != nil {
-		return repo.SessionModel{}, fmt.Errorf("failed to start session: %w", err)
-	}
-
-	return hash, nil
+	return user.ToSession(), nil
 }
 
 // CheckPassword checks if the given username and password are correct.

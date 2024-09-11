@@ -9,12 +9,14 @@ import (
 	"github.com/peteraba/cloudy-files/http/web"
 )
 
+// FallbackHandler handles requests for users not logged in.
 type FallbackHandler struct {
 	api    *api.FallbackHandler
 	web    *web.FallbackHandler
 	logger *log.Logger
 }
 
+// NewFallbackHandler creates a new FallbackHandler instance.
 func NewFallbackHandler(apiHandler *api.FallbackHandler, webHandler *web.FallbackHandler, logger *log.Logger) *FallbackHandler {
 	return &FallbackHandler{
 		api:    apiHandler,

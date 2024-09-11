@@ -19,13 +19,10 @@ import (
 	"github.com/peteraba/cloudy-files/util"
 )
 
-func setupFileHandler(t *testing.T) (http.Handler, *store.InMemory, *store.InMemory) { //nolint:unparam // sessionStore will be used soon
+func setupFileHandler(t *testing.T) (http.Handler, *store.InMemory) {
 	t.Helper()
 
 	factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
-
-	sessionStore := store.NewInMemory(util.NewSpy())
-	factory.SetStore(sessionStore, compose.SessionStore)
 
 	fileStore := store.NewInMemory(util.NewSpy())
 	factory.SetStore(fileStore, compose.FileStore)
@@ -33,7 +30,7 @@ func setupFileHandler(t *testing.T) (http.Handler, *store.InMemory, *store.InMem
 	sut := factory.CreateFileHandler()
 	handler := http.Handler(sut.SetupRoutes(http.NewServeMux()))
 
-	return handler, sessionStore, fileStore
+	return handler, fileStore
 }
 
 func TestFileHandler_ListFiles(t *testing.T) {
@@ -41,7 +38,7 @@ func TestFileHandler_ListFiles(t *testing.T) {
 
 	ctx := context.Background()
 
-	t.Run("success json", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
 		// setup
@@ -54,7 +51,7 @@ func TestFileHandler_ListFiles(t *testing.T) {
 			Access: accessStub,
 		}
 
-		handler, _, fileStoreStub := setupFileHandler(t)
+		handler, fileStoreStub := setupFileHandler(t)
 
 		err := fileStoreStub.Marshal(ctx, filesStub)
 		require.NoError(t, err)
@@ -93,7 +90,7 @@ func TestFileHandler_ListFiles(t *testing.T) {
 			Access: accessStub,
 		}
 
-		handler, _, fileStoreStub := setupFileHandler(t)
+		handler, fileStoreStub := setupFileHandler(t)
 
 		fileStoreSpy := fileStoreStub.GetSpy()
 		fileStoreSpy.Register("Read", 0, apperr.ErrAccessDenied)
@@ -127,7 +124,7 @@ func TestFileHandler_NotImplemented(t *testing.T) {
 		t.Parallel()
 
 		// setup
-		handler, _, _ := setupFileHandler(t)
+		handler, _ := setupFileHandler(t)
 
 		// setup request
 		req, err := http.NewRequestWithContext(ctx, http.MethodDelete, "/files/foo", nil)

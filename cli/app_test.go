@@ -4,7 +4,6 @@ import (
 	"context"
 	"regexp"
 	"testing"
-	"time"
 
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/stretchr/testify/assert"
@@ -48,71 +47,6 @@ func TestApp_UnknownSubcommand(t *testing.T) {
 		// assert
 		assert.Contains(t, actual, cli.Help)
 		assert.Contains(t, actual, "Unknown subcommand: foo")
-	})
-}
-
-func TestApp_CleanUp(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-
-	setup := func(t *testing.T, sessionData repo.SessionModelMap) (*cli.App, *cliTest.FakeDisplay, *store.InMemory) {
-		t.Helper()
-
-		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
-
-		// setup store
-		fakeSessionStore := store.NewInMemory(util.NewSpy())
-		err := fakeSessionStore.Marshal(ctx, sessionData)
-		require.NoError(t, err)
-
-		factory.SetStore(fakeSessionStore, compose.SessionStore)
-
-		return factory.CreateCliApp(), factory.GetDisplay().(*cliTest.FakeDisplay), fakeSessionStore
-	}
-
-	t.Run("fail if session returns an error", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		app, fakeDisplay, fakeSessionStore := setup(t, repo.SessionModelMap{})
-
-		sessionSpy := fakeSessionStore.GetSpy()
-		sessionSpy.Register("ReadForWrite", 0, assert.AnError)
-
-		// assert
-		fakeDisplay.QueueContainsAssertion("Session cleanup failed.")
-		fakeDisplay.QueueContainsAssertion(assert.AnError.Error())
-
-		// execute
-		app.Route(ctx, "cleanUp")
-	})
-
-	t.Run("success", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		sessionDataStub := repo.SessionModelMap{
-			"foo": {
-				Hash:    "bar",
-				IsAdmin: false,
-				Expires: 1725623414,
-				Access:  []string{"foo", "bar"},
-			},
-		}
-
-		app, fakeDisplay, fakeSessionStore := setup(t, sessionDataStub)
-
-		// execute
-		app.Route(ctx, "cleanUp")
-
-		// collect data
-		data, err := fakeSessionStore.Read(ctx)
-		require.NoError(t, err)
-
-		// assert
-		assert.Contains(t, fakeDisplay.String(), "Session data is cleaned up.")
-		assert.Equal(t, []byte(`{}`), data)
 	})
 }
 
@@ -260,12 +194,12 @@ func TestApp_CreateUser_CheckPassword(t *testing.T) {
 	})
 }
 
-func TestApp_CreateUser_Login_CheckSession(t *testing.T) {
+func TestApp_CreateUser_Login(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
 
-	setup := func(t *testing.T) (*cli.App, *cliTest.FakeDisplay, *store.InMemory) {
+	setup := func(t *testing.T) (*cli.App, *cliTest.FakeDisplay) {
 		t.Helper()
 
 		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
@@ -277,12 +211,7 @@ func TestApp_CreateUser_Login_CheckSession(t *testing.T) {
 			factory.SetStore(userStoreStub, compose.UserStore)
 		}
 
-		// setup session store
-		sessionStoreStub := store.NewInMemory(util.NewSpy())
-
-		factory.SetStore(sessionStoreStub, compose.SessionStore)
-
-		return factory.CreateCliApp(), factory.GetDisplay().(*cliTest.FakeDisplay), sessionStoreStub
+		return factory.CreateCliApp(), factory.GetDisplay().(*cliTest.FakeDisplay)
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -294,9 +223,9 @@ func TestApp_CreateUser_Login_CheckSession(t *testing.T) {
 		passwordStub := gofakeit.Password(true, true, true, true, false, 20)
 		isAdminStub := "Y"
 
-		hashRegex := regexp.MustCompile(`Session started: ([0-9a-f]{32})\n`)
+		hashRegex := regexp.MustCompile(`Session started: (.* .*)\n`)
 
-		app, fakeDisplay, _ := setup(t)
+		app, fakeDisplay := setup(t)
 
 		// execute
 		app.Route(ctx, "createUser", nameStub, emailStub, passwordStub, isAdminStub)
@@ -321,82 +250,13 @@ func TestApp_CreateUser_Login_CheckSession(t *testing.T) {
 		nameStub := "foo"
 		passwordStub := "bar"
 
-		app, fakeDisplay, _ := setup(t)
+		app, fakeDisplay := setup(t)
 
 		// assert
 		fakeDisplay.QueueContainsAssertion("Login failed.")
 
 		// execute
 		app.Route(ctx, "login", nameStub, passwordStub)
-	})
-
-	t.Run("fail if session does not exist", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		nameStub := "foo"
-		hashStub := "bar"
-
-		app, fakeDisplay, _ := setup(t)
-
-		// assert
-		fakeDisplay.QueueContainsAssertion("Session does not exist.")
-		fakeDisplay.QueueContainsAssertion("not found")
-
-		// execute
-		app.Route(ctx, "checkSession", nameStub, hashStub)
-	})
-
-	t.Run("fail if session does not match the user session", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		nameStub := "foo"
-		hashStub := "bar"
-
-		app, fakeDisplay, sessionStore := setup(t)
-
-		err := sessionStore.Marshal(ctx, repo.SessionModelMap{
-			nameStub: {
-				Expires: time.Now().Add(time.Hour).Unix(),
-				Hash:    "baz",
-				IsAdmin: false,
-				Access:  []string{"foo", "bar"},
-			},
-		})
-		require.NoError(t, err)
-
-		// assert
-		fakeDisplay.QueueContainsAssertion("Session does not exist.")
-
-		// execute
-		app.Route(ctx, "checkSession", nameStub, hashStub)
-	})
-
-	t.Run("fail if session is expired", func(t *testing.T) {
-		t.Parallel()
-
-		// setup
-		nameStub := "foo"
-		hashStub := "bar"
-
-		app, fakeDisplay, sessionStore := setup(t)
-
-		err := sessionStore.Marshal(ctx, repo.SessionModelMap{
-			nameStub: {
-				Expires: time.Now().Add(-1 * time.Hour).Unix(),
-				Hash:    hashStub,
-				IsAdmin: false,
-				Access:  []string{"foo", "bar"},
-			},
-		})
-		require.NoError(t, err)
-
-		// assert
-		fakeDisplay.QueueContainsAssertion("Session does not exist.")
-
-		// execute
-		app.Route(ctx, "checkSession", nameStub, hashStub)
 	})
 }
 
@@ -498,6 +358,77 @@ func TestApp_Upload_and_Size(t *testing.T) {
 
 		// assert
 		assert.Contains(t, fakeDisplay.String(), "File could not be found")
+	})
+}
+
+func TestApp_CookieKey(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	setup := func(t *testing.T) (*cli.App, *cliTest.FakeDisplay) {
+		t.Helper()
+
+		factory := composeTest.NewTestFactory(t, appconfig.NewConfig())
+
+		return factory.CreateCliApp(), factory.GetDisplay().(*cliTest.FakeDisplay)
+	}
+
+	t.Run("success no input", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		app, fakeDisplay := setup(t)
+
+		// execute
+		app.Route(ctx, "cookieKey")
+
+		// assert
+		assert.Regexp(t, "Key generated: [a-z0-9]{64}", fakeDisplay.String())
+	})
+
+	t.Run("success given length", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		lengthStub := "5"
+
+		app, fakeDisplay := setup(t)
+
+		// execute
+		app.Route(ctx, "cookieKey", lengthStub)
+
+		// assert
+		assert.Regexp(t, "Key generated: [a-z0-9]{10}", fakeDisplay.String())
+	})
+
+	t.Run("fail if the length given is invalid", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		lengthStub := "invalid"
+
+		app, fakeDisplay := setup(t)
+
+		fakeDisplay.QueueContainsAssertion("Invalid length:")
+
+		// execute
+		app.Route(ctx, "cookieKey", lengthStub)
+	})
+
+	t.Run("fail if the length given is negative", func(t *testing.T) {
+		t.Parallel()
+
+		// setup
+		lengthStub := "-1"
+
+		app, fakeDisplay := setup(t)
+
+		// execute
+		app.Route(ctx, "cookieKey", lengthStub)
+
+		// assert
+		assert.Regexp(t, "Key generated: [a-z0-9]{64}", fakeDisplay.String())
 	})
 }
 

@@ -7,26 +7,40 @@ import (
 
 	"github.com/phuslu/log"
 
+	"github.com/peteraba/cloudy-files/apperr"
 	"github.com/peteraba/cloudy-files/service"
 )
 
 type FileHandler struct {
-	sessionService *service.Session
-	fileService    *service.File
-	logger         *log.Logger
+	service *service.File
+	cookie  *service.Cookie
+	logger  *log.Logger
 }
 
-func NewFileHandler(sessionService *service.Session, fileService *service.File, logger *log.Logger) *FileHandler {
+func NewFileHandler(fileService *service.File, cookie *service.Cookie, logger *log.Logger) *FileHandler {
 	return &FileHandler{
-		sessionService: sessionService,
-		fileService:    fileService,
-		logger:         logger,
+		service: fileService,
+		cookie:  cookie,
+		logger:  logger,
 	}
 }
 
 // ListFiles lists files.
 func (fh *FileHandler) ListFiles(w http.ResponseWriter, r *http.Request) {
-	files, err := fh.fileService.List(r.Context(), nil, true)
+	userSession, err := fh.cookie.GetSessionUser(r)
+	if err != nil {
+		Problem(w, fh.logger, err)
+
+		return
+	}
+
+	if !userSession.IsAdmin {
+		Problem(w, fh.logger, apperr.ErrAccessDenied)
+
+		return
+	}
+
+	files, err := fh.service.List(r.Context(), nil, true)
 	if err != nil {
 		Problem(w, fh.logger, err)
 
@@ -62,5 +76,5 @@ func (fh *FileHandler) ListFiles(w http.ResponseWriter, r *http.Request) {
 		strings.Join(fileHTML, ""),
 	)
 
-	send(w, tmpl, fh.logger)
+	send(w, tmpl)
 }

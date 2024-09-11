@@ -37,3 +37,41 @@ func TestNewConfigFromFile(t *testing.T) {
 		})
 	})
 }
+
+func TestConfig_Validate(t *testing.T) {
+	t.Parallel()
+
+	t.Run("success", func(t *testing.T) {
+		t.Parallel()
+
+		sut := appconfig.NewConfig()
+		sut.CookieHashKey = "somethingelse"
+		sut.CookieBlockKey = "somethingelse"
+
+		sut.Validate()
+	})
+
+	t.Run("panic if cookie hash key is default", func(t *testing.T) {
+		t.Parallel()
+
+		sut := appconfig.NewConfig()
+		sut.CookieBlockKey = "somethingelse"
+
+		// assert
+		assert.Panics(t, func() {
+			sut.Validate()
+		})
+	})
+
+	t.Run("panic if cookie block key is default", func(t *testing.T) {
+		t.Parallel()
+
+		sut := appconfig.NewConfig()
+		sut.CookieHashKey = "somethingelse"
+
+		// assert
+		assert.Panics(t, func() {
+			sut.Validate()
+		})
+	})
+}

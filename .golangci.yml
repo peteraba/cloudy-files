@@ -3,6 +3,7 @@ linters:
   disable:
     - depguard # it's not for smallish projects, prevents accidentally adding new, unchecked dependencies
     - execinquery # deprecated
+    - exhaustruct # annoying and mostly useless
     - exportloopref # deprecated (replaced by copyloopvar)
     - ginkgolinter # We don't use ginkgo or gomega here
     - gofmt # We use gofumpt instead
@@ -314,7 +315,6 @@ issues:
     - path: "_test.go"
       linters:
         - dupl
-        - exhaustruct
         - forcetypeassert
         - funlen
         - gochecknoglobals
@@ -326,10 +326,24 @@ issues:
         - predeclared
         - revive
         - wsl
+    # temporary
     - text: "flash message"
       linters:
         - godox
+    # temporary
     - text: "CSRF"
+      linters:
+        - godox
+    # temporary
+    - text: "Auth"
+      linters:
+        - godox
+    # temporary
+    - text: "Cookie check"
+      linters:
+        - godox
+    # temporary
+    - text: "Start session"
       linters:
         - godox
     - text: "apperr"
@@ -338,6 +352,3 @@ issues:
     - text: "parse returns generic interface"
       linters:
         - ireturn
-    - path: "http/"
-      linters:
-        - exhaustruct
