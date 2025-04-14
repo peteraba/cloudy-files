@@ -1,6 +1,7 @@
 module github.com/peteraba/cloudy-files
 
 go 1.23
+toolchain go1.24.1
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.30.4
@@ -14,7 +15,7 @@ require (
 	github.com/phuslu/log v1.0.110
 	github.com/stretchr/testify v1.9.0
 	github.com/wagslane/go-password-validator v0.3.0
-	golang.org/x/crypto v0.26.0
+	golang.org/x/crypto v0.35.0
 )
 
 require (
